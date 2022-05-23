@@ -1,0 +1,9 @@
+*.d
+*.o
+*.out
+graveyard/graveyard
+linear/linear
+olinear/olinear
+quad/quad
+tabletest
+

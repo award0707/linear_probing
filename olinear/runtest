@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+
+def test(fn):
+    sizes = [1000,10000,100000,250000,500000]
+    outfile = fn
+    params = {'buckets', 'load factor', 'collisions', 'avg misses', 'longest search', 'operations', 'wall-clock time'}
+
+    os.system(f"echo {params} > {outfile}")
+    for x in sizes:
+        cmd = f"./olinear -i33 -f34 -b{x} -r40000 -l0.9 >> {outfile}"
+        print(cmd)
+        os.system(cmd)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Specify output filename")
+        sys.exit()
+
+    test(sys.argv[1]+".csv")
+

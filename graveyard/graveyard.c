@@ -1,8 +1,8 @@
-#define C_END 5000
-
 #include "graveyard.h"
 #include <iostream>
 #include <cstring>
+
+#define C_END 10000
 
 kvstore::kvstore(int b) {
 	prime_index = 0;
@@ -10,8 +10,8 @@ kvstore::kvstore(int b) {
 		prime_index++;
 	}
 	
-	table = new hashnode[b];
-	for(int i=0; i<b; i++) {
+	table = new hashnode[b+C_END];
+	for(int i=0; i<b+C_END; i++) {
 		table[i].status = EMPTY;
 	}
 
@@ -41,18 +41,20 @@ bool kvstore::insert(hashnode *t, int key, int value, bool rehashing = false) {
 	bool res = false;
 	int miss = 0;
 
-	int b = buckets;
-	int h = h0;
-	
-	if (elements>=buckets || h > (b-C_END)) {
+	if (elements>=buckets) {
 		failed_insert++;
 		return false;
 	}
 
+	// make sure we didn't push anything off the end of the table
+	if(t[buckets+C_END-1].status != EMPTY) {
+		std::cerr << "increase C_END\n";
+	}
 
 	rehashing ? rehashing_insert_c++ : insert_c++;
-	for(;;) {
-		if (t[h].status == EMPTY || t[h].status == DELETED) {
+	for(int h=h0; h<buckets; h++) {
+		if (t[h].status == EMPTY || (t[h].status == DELETED && hash(t[h].data.key) >= h0)) {
+			// found empty slot or deleted slot with an equal/higher hash
 			t[h].data.key = key;
 			t[h].data.value = value;
 			t[h].status = FULL;
@@ -60,14 +62,17 @@ bool kvstore::insert(hashnode *t, int key, int value, bool rehashing = false) {
 			res = true;
 			if (!rehashing) rebuild_window--;
 			break;
-		} else if (t[h].data.key == key) { 
+		} else if (t[h].status == FULL && t[h].data.key == key) { 
+			// duplicate key found, don't insert
 			failed_insert++;
 			break;
 		} else if (hash(t[h].data.key) > h0) {
+			// slide keys down to make room and insert this key here with
+			// others of the same hash
 			hashnode *start = &t[h];
 			hashnode *end = start+1;
-			while (end->status == FULL) end++;
-			std::memmove(start+1, start, end-start);
+			while (end->status != EMPTY && end->status != DELETED) end++;
+			std::memmove(start+1, start, sizeof(hashnode)*(end-start));
 
 			t[h].data.key = key;
 			t[h].data.value = value;
@@ -78,11 +83,6 @@ bool kvstore::insert(hashnode *t, int key, int value, bool rehashing = false) {
 			break;
 		}
 		
-		h = (h+1) % buckets;
-		if (h > (b-C_END)) {
-			failed_insert++;
-			break;
-		}
 		miss++;
 	}
 		
@@ -90,32 +90,48 @@ bool kvstore::insert(hashnode *t, int key, int value, bool rehashing = false) {
 
 	if (res && load_factor() > p_max_load_factor) rehash();
 
-	if (!rehashing && rebuild_window <= 0) rebuild(); 
+	if (rebuild_window <= 0) rebuild(); 
 	return res;
 }
 
+void kvstore::insert_tombstone(hashnode *t, int key) {
+	int h = hash(key);
+
+	if (t[h].status != EMPTY) {
+		hashnode *start = &t[h];
+		hashnode *end = start+1;
+		while (end->status == FULL) end++;
+		std::memmove(start+1, start, sizeof(hashnode)*(end-start));
+	}
+	
+	t[h].data.key = key;
+	t[h].data.value = 0;
+	t[h].status = DELETED;
+}
+
 void kvstore::rebuild() {
-	hashnode *newtable = new hashnode[buckets];
-	for(int i=0; i<buckets; i++) {
+	rebuilds++;	
+	rebuild_window = buckets * (1.0-load_factor())/4.0;
+
+	hashnode *newtable = new hashnode[buckets+C_END];
+	for(int i=0; i<buckets+C_END; i++) {
 		newtable[i].status = EMPTY;
 	}
 
-//	int ntomb = buckets * (1.0-load_factor())/2.0;
-	for(int i=(2.0)/(1.0-load_factor()); i<buckets; i+=(2.0)/(1.0-load_factor())) {
-		newtable[i].status = DELETED;
-	}
-
 	elements = 0;
-	for(int i=0; i<buckets; i++) {
+	for(int i=0; i<buckets+C_END; i++) {
 		if (table[i].status == FULL)
 			insert(newtable, table[i].data.key, table[i].data.value, true);
+	}
+
+	int interval = buckets * (1.0-load_factor())/2.0;
+	for(int i=interval; i<buckets; i+=interval) {
+		insert_tombstone(newtable, i);
 	}
 
 	delete table;
 	table = newtable;
 
-	rebuilds++;	
-	rebuild_window = buckets * (1.0-load_factor())/4.0;
 }
 
 bool kvstore::insert(int key, int value) {
@@ -128,8 +144,7 @@ int* kvstore::find(int key) {
 	int miss = 0;
 
 	find_c++;
-	int h = h0;
-	for(;;) {
+	for(int h = h0; h < buckets+C_END; h++) {
 		if (table[h].status == EMPTY || hash(table[h].data.key) > h0) {
 			failed_find++;
 			ret = nullptr;
@@ -139,13 +154,7 @@ int* kvstore::find(int key) {
 			ret = &table[h].data.value;
 			break;
 		}
-		h = (h+1) % buckets;
 		miss++;
-		if (h >= (buckets-C_END)) { 
-			failed_find++;
-			ret = nullptr;
-			break;
-		}	
 	}
 
 	if (miss) update_misses(miss, FIND);
@@ -158,8 +167,7 @@ bool kvstore::remove(int key) {
 	int miss = 0;
 
 	remove_c++;	
-	int h = h0;
-	for(;;) {
+	for(int h = h0; h < buckets+C_END; h++) {
 		if (table[h].status == EMPTY || hash(table[h].data.key) > h0) {
 			failed_remove++;
 			break;
@@ -171,12 +179,7 @@ bool kvstore::remove(int key) {
 			res = true;
 			break;
 		}
-		h = (h+1) % buckets;
 		miss++;
-		if (h >= (buckets - C_END)) {
-			failed_remove++;
-			break;
-		}
 	}
 
 	if (miss) update_misses(miss, REMOVE);

@@ -15,7 +15,6 @@ struct entry {
 struct hashnode {
 	struct entry data;
 	node_status status;
-	hashnode() { status = EMPTY; }
 };
 
 class kvstore {

@@ -10,8 +10,6 @@ Implemented some different open-addressing schemes for comparison purposes.
 - Ordered linear probing
 - Graveyard hashing
 
-Add the cuckoo hashing later?
-
 ## How to use
 
 This is ultra rough code, just proof of concept for running some benchmarks.

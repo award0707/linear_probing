@@ -1,7 +1,7 @@
 CC=g++
 CFLAGS=-I.
 TYPE = olinear
-DEPS = $(TYPE).h
+DEPS = $(TYPE).h primes.h
 OBJ = $(TYPE).o bench.o 
 
 all: $(TYPE)

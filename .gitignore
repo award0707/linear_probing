@@ -1,6 +1,8 @@
 *.d
 *.o
 *.out
+*.swp
+*.csv
 graveyard/graveyard
 linear/linear
 olinear/olinear

@@ -106,7 +106,8 @@ int main(int argc, char **argv) {
 		loadstats.opcount++;
 	}
 	loadstats.wct = std::chrono::system_clock::now() - wctstart;
-	//display_stats(loadstats, verbose);
+	std::cout << "loading | ";
+	display_stats(loadstats, verbose);
 
 	//
 	// test phase
@@ -122,7 +123,8 @@ int main(int argc, char **argv) {
 		if (which < pinsert) {
 			do {
 				if (c.bucket_c() == c.element_c()) {
-					std::cout << "OOPS: table filled, trial " << i << "\n";
+					std::cerr << "OOPS: table filled, trial " << i << "\n";
+					exit(1);
 					break;
 				}
 				k = data(rng);
@@ -134,21 +136,25 @@ int main(int argc, char **argv) {
 				std::uniform_int_distribution<> pick(0,keys.size()-1);
 				index = pick(rng);
 				k = keys[index]; 
+			} else {
+				std::cerr << "ran out of keys\n";
+				break;
 			}
 
 			if (which < pinsert + pfind) 
-				c.find(k);
+				c.find(k); 
 			else {
 				if(c.remove(k)) {
 					std::swap(keys[index],keys.back());
 					keys.pop_back();
-				} 
+				}
 			}
 		}
 
 		runstats.opcount++;
 	}
 	runstats.wct = std::chrono::system_clock::now() - wctstart;
+	std::cout << "running | ";
 	display_stats(runstats, verbose);
 
 	return 0;
@@ -168,7 +174,7 @@ void display_stats(stats_t &stats, bool verbose) {
 }
 
 void terse_stats(kvstore &c) {
-	std::cout << c.bucket_c() << ',' << c.element_c() << ',' << c.load_factor() << ','; 
+	std::cout << c.bucket_c() << ',' << c.element_c() << ',' << c.load_factor() << ',' << c.rebuilds << ','; 
 	std::cout << c.collision_c() << ',' << c.avg_misses() << ',' << c.longest_search << ',';
 }
 
@@ -178,6 +184,7 @@ void verbose_stats(kvstore &c) {
 	std::cout << "Buckets: " << c.bucket_c() << "\n";
 	std::cout << "Elements: " << c.element_c() << "\n";
 	std::cout << "Load factor: " << c.load_factor() << "\n";
+	std::cout << "Rebuilds: " << c.rebuilds << "\n";
 	
 	std::cout << "------ Search statistics ------\n";
 	std::cout << "Find collisions: " << c.collision_c() << "\n";

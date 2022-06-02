@@ -3,9 +3,5 @@
 *.out
 *.swp
 *.csv
-graveyard/graveyard
-linear/linear
-olinear/olinear
-quad/quad
-tabletest
-
+src/tabletest
+src/bench

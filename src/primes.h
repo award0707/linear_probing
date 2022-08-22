@@ -1,21 +1,12 @@
-#ifndef __HASH_INTKEY_LINEAR
-#define __HASH_INTKEY_LINEAR
+#ifndef PRIMES_H
+#define PRIMES_H
 
-#include <cstdint>
+#include <cstddef>
 
-enum node_status { FULL, EMPTY, DELETED };
-enum optype { INSERT, FIND, REMOVE, REHASH };
+// just some prime number support functions
 
-struct entry {
-	int key;
-	int value;
-};
-
-struct hashnode {
-	struct entry data;
-	node_status status;
-	hashnode() { status = EMPTY; }
-};
+std::size_t next_prime(size_t n);
+bool is_prime(size_t n);
 
 static const std::size_t primes[51] =
 {
@@ -70,51 +61,6 @@ static const std::size_t primes[51] =
   /* 48    */ (std::size_t)2251799813685119ull, 
   /* 49    */ (std::size_t)4503599627370449ull,
   /* 50    */ (std::size_t)9007199254740881ull, 
-};
-
-class kvstore {
-	private:
-		hashnode *table;
-		std::size_t buckets;
-		std::size_t elements;
-		int prime_index;
-		double p_max_load_factor;
-
-		int search_count;
-		double avg_find_miss;
-		int coll;
-
-		bool insert(hashnode *t, int key, int value, bool rehashing);
-		uint64_t hash(int);
-		void update_misses(int misses, enum optype op);
-
-	public:
-		kvstore(std::size_t b = 7, double lf = 0.5);
-		~kvstore();
-
-		bool get(int key, int* value);
-	        bool set(int key, int value);
-
-		bool insert(int key, int value);
-		int* find(int key);
-		bool remove(int key);
-		void rehash();
-		void set_max_load_factor(double f);
-		
-		// Performance characteristics
-		int insert_c, find_c, remove_c;
-		int insert_coll_c, find_coll_c, remove_coll_c;
-		int rehashing_insert_c, rehashing_insert_coll_c;
-		int failed_insert, failed_find, failed_remove;
-		int rehashes;
-		int longest_search;
-
-		void reset_counts();
-		double load_factor();
-		double avg_misses();
-		int bucket_c();
-		int collision_c();
-		int element_c();
 };
 
 #endif

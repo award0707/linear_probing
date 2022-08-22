@@ -10,7 +10,7 @@ def test(fn):
 
     os.system(f"echo {params} > {outfile}")
     for x in sizes:
-        cmd = f"./linear -i33 -f34 -b{x} -r40000 -l0.9 >> {outfile}"
+        cmd = f"./bench -i33 -q34 -b{x} -r40000 -l0.9 >> {outfile}"
         print(cmd)
         os.system(cmd)
 

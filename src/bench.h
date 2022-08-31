@@ -6,8 +6,6 @@
 #include <string>
 #include "hashtable.h"
 
-#define OPS_INTERVAL 1'000'000
-
 using std::chrono::steady_clock;
 using std::chrono::time_point;
 
@@ -15,6 +13,7 @@ struct stats_t {
 	hashtable *ht;
 	std::vector<time_point<steady_clock> > wct;
 	std::size_t opcount;
+	int ops_interval;
 };
 
 struct params_t {
@@ -23,6 +22,7 @@ struct params_t {
 	double loadfactor;
 	size_t table_size, trials;
 	bool verbose;
+	int ops_interval;
 	enum { none, linear, quadratic, ordered, graveyard } type;
 };
 

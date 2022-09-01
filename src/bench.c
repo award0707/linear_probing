@@ -1,5 +1,8 @@
 #include <iostream>
+#include <iomanip>
+#include <fstream>
 #include <chrono>
+#include <sstream>
 #include <unistd.h>
 #include <vector>
 #include <unordered_set>
@@ -48,7 +51,7 @@ main(int argc, char **argv)
 	//
 	random_device dev;
 	mt19937 rng(dev());
-	uniform_int_distribution<mt19937::result_type> data(0,1'000'000'000L);
+	uniform_int_distribution<mt19937::result_type> data(0,2'000'000'000L);
 //	binomial_distribution<mt19937::result_type> data(1'000'000'000L,0.5);
 
 	cout << "Generating the test set.\n";
@@ -91,11 +94,10 @@ main(int argc, char **argv)
 	keys.resize(loadindex);
 
 	cout << "\r[" << ht->load_factor()/p.loadfactor*100 << "% complete]     \n";
-	cout << "\n======== Loading ========\n";
+	cout << "\n======== Load complete ========\n";
 	cout << "\n\e[1mVerification\e[0m:\n";
 	ht->report_testing_stats();
 	display_stats(loadstats, p.verbose);
-   	dump_timing_data(loadstats);
 	
 	//
 	// running phase
@@ -157,16 +159,45 @@ main(int argc, char **argv)
 	cout << "\r[" << 100*runstats.opcount/p.trials << "% complete]\n";
 	if (opscount != p.ops_interval) runstats.wct.push_back(steady_clock::now());
 
-	cout << "\n======== Running ========\n\n";
+	cout << "\n======== Run complete ========\n\n";
 	cout << "\e[1mVerification\e[0m:\n";
 	ht->report_testing_stats();
 	display_stats(runstats, p.verbose);
 
-	
+	// get the frequency of cluster sizes
+	// 'tombs' treats tombstones as empties like an insert
+	// 'notombs' treats them as full, as in queries and removes
 	map<int,int> tombs, notombs;
-	dump_timing_data(runstats);
 	ht->cluster_hist(tombs,notombs);
-	dump_cluster_hist(tombs);
+
+	//
+	// output phase
+	//
+	auto t = std::time(nullptr);
+	auto tm = *std::localtime(&t);
+	ostringstream oss;
+
+	oss << ht->table_type()
+		<< "-i" << p.insert << "q" << p.query << "r" << p.remove
+		<< "-f" << p.fails
+		<< "-ts" << ht->table_size()
+		<< "-lf" << p.loadfactor << "-"
+		<< std::put_time(&tm, "%d-%m-%Y");
+	auto fnstr = oss.str();
+
+	ofstream f;
+
+	f.open("loading-" + fnstr);
+	dump_timing_data(loadstats,f);
+	f.close();
+	
+	f.open("running-" + fnstr);
+	dump_timing_data(runstats,f);
+	f.close();
+	
+	f.open("cluster-" + fnstr);
+	dump_cluster_hist(tombs,f);
+	f.close();
 
 	delete ht;
 	return 0;
@@ -253,7 +284,7 @@ setup_test_params(int argc, char **argv, params_t *p)
 
 	char *ptype = NULL;
 	int c;
-	while ((c = getopt(argc, argv, "t:i:q:f:b:l:n:o:v")) != -1) {
+	while ((c = getopt(argc, argv, "t:i:q:f:b:l:n:o:v:F")) != -1) {
 		switch(c) 
 		{
 		case 't':
@@ -300,8 +331,8 @@ setup_test_params(int argc, char **argv, params_t *p)
 				    "f [fail %],\n" 
 					"b [# of buckets], "
 					"n [# of operations in thousands], l [load factor]\n"
-					"v [verbose mode]\n"
-					"o [histogram interval in thousands]\n";
+					"o [histogram interval in thousands]\n"
+					"v [verbose mode]\n";
 			return false;
 		default:
 			abort();

@@ -1,4 +1,6 @@
 #include <iostream>
+#include <vector>
+#include <map>
 #include "hashtable.h"
 #include "primes.h"
 
@@ -129,6 +131,60 @@ hashtable::report_testing_stats(std::ostream &os)
 			<< " (" << duplicates << " dup) / " << inserts
 	        << ", Queries: " << failed_queries << " / " << queries 
 	        << ", Removes: " << failed_removes << " / " << removes << "\n";	
+}
+
+void
+hashtable::cluster_freq(std::map<int,int> &clust,
+						std::map<int,int> &clust_tombs)
+{
+	int cs = 0, csi = 0;	// cluster size, clusters size including tombs
+	for (int i=0; i<buckets; ++i) {
+		switch(table[i].state) {
+			case FULL:
+				++cs;
+				++csi;
+				break;
+			case EMPTY:
+				if (cs) clust[cs]++;
+				if (csi) clust_tombs[csi]++;
+				cs = csi = 0;
+				break;
+			case DELETED:
+				++csi;
+				if (cs) clust[cs]++;
+				cs = 0;
+				break;
+		}
+	}
+	if (cs) clust[cs]++;
+	if (csi) clust_tombs[csi]++;
+}
+
+void
+hashtable::cluster_len(std::vector<int> &clust,
+					   std::vector<int> &clust_tombs)
+{
+	int cs = 0, csi = 0;	// cluster size, cluster size including tombs
+	for (int i=0; i<buckets; ++i) {
+		switch(table[i].state) {
+			case FULL:
+				++cs;
+				++csi;
+				break;
+			case EMPTY:
+				if (cs) clust.push_back(cs);
+				if (csi) clust_tombs.push_back(csi);
+				cs = csi = 0;
+				break;
+			case DELETED:
+				++csi;
+				if (cs) clust.push_back(cs);
+				cs = 0;
+				break;
+		}
+	}
+	if (cs) clust.push_back(cs);
+	if (csi) clust_tombs.push_back(csi);
 }
 
 double

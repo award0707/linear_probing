@@ -4,7 +4,8 @@
 #include <cstdint>
 #include <string>
 #include <iostream>
-
+#include <vector>
+#include <map>
 
 class hashtable {
 	protected:
@@ -25,7 +26,7 @@ class hashtable {
 		uint64_t search_count;
 		double miss_running_avg;
 
-		virtual bool insert(record *t, int key, int value, bool rebuilding) =0;
+		virtual bool insert(record *t, int key, int value, bool rebuilding) = 0;
 		uint64_t hash(int k);
 		void update_misses(int misses, enum optype op);
 
@@ -54,6 +55,11 @@ class hashtable {
 
 		virtual void reset_perf_counts();
 		virtual void report_testing_stats(std::ostream &os = std::cout);
+		void cluster_freq(std::map<int,int> &clust,
+						  std::map<int,int> &clust_tombs);
+		void cluster_len(std::vector<int> &clust,
+						 std::vector<int> &clust_tombs);
+
 		double load_factor();
 		double avg_misses();
 		std::size_t table_size();

@@ -1,8 +1,12 @@
 #include <iostream>
+#include <iomanip>
+#include <fstream>
 #include <chrono>
+#include <sstream>
 #include <unistd.h>
 #include <vector>
 #include <unordered_set>
+#include <map>
 #include <random>
 
 #include "primes.h"
@@ -47,7 +51,7 @@ main(int argc, char **argv)
 	//
 	random_device dev;
 	mt19937 rng(dev());
-	uniform_int_distribution<mt19937::result_type> data(0,1'000'000'000L);
+	uniform_int_distribution<mt19937::result_type> data(0,2'000'000'000L);
 //	binomial_distribution<mt19937::result_type> data(1'000'000'000L,0.5);
 
 	cout << "Generating the test set.\n";
@@ -90,10 +94,10 @@ main(int argc, char **argv)
 	keys.resize(loadindex);
 
 	cout << "\r[" << ht->load_factor()/p.loadfactor*100 << "% complete]     \n";
-	cout << "\n======== Loading ========\n";
-	cout << "\n\e[1mVerification\e[0m:\n"; ht->report_testing_stats();
+	cout << "\n======== Load complete ========\n";
+	cout << "\n\e[1mVerification\e[0m:\n";
+	ht->report_testing_stats();
 	display_stats(loadstats, p.verbose);
-   	dump_timing_data(loadstats);
 	
 	//
 	// running phase
@@ -155,13 +159,86 @@ main(int argc, char **argv)
 	cout << "\r[" << 100*runstats.opcount/p.trials << "% complete]\n";
 	if (opscount != p.ops_interval) runstats.wct.push_back(steady_clock::now());
 
-	cout << "\n======== Running ========\n\n";
-	cout << "\e[1mVerification\e[0m:\n"; ht->report_testing_stats();
+	cout << "\n======== Run complete ========\n\n";
+	cout << "\e[1mVerification\e[0m:\n";
+	ht->report_testing_stats();
 	display_stats(runstats, p.verbose);
-	dump_timing_data(runstats);
+
+	//
+	// output phase
+	//
+	auto t = std::time(nullptr);
+	auto tm = *std::localtime(&t);
+	ostringstream oss;
+
+	oss << ht->table_type()
+		<< "-i" << p.insert << "_q" << p.query << "_r" << p.remove
+		<< "-f" << p.fails
+		<< "-ts" << ht->table_size()
+		<< "-lf" << p.loadfactor
+		<< std::put_time(&tm, "_%d-%m-%Y-%H-%M-%S");
+	auto fnstr = oss.str();
+
+	ofstream f;
+
+	if (p.write_timing_data) {
+		f.open("loading-" + fnstr + ".csv");
+		f << "Operations, Time, Ops/sec\n";
+		dump_timing_data(loadstats,f);
+		f.close();
+		
+		f.open("running-" + fnstr + ".csv");
+		f << "Operations, Time, Ops/sec\n";
+		dump_timing_data(runstats,f);
+		f.close();
+	}	
+
+	if (p.write_cluster_freq) {
+		map<int,int> c, ct;
+		ht->cluster_freq(c, ct);
+
+		f.open("freq-" + fnstr + ".csv");
+		f << "Length, Frequency\n";
+		dump_cluster_freq(c, f);
+		f.close();
+
+		f.open("freq_tombs-" + fnstr + ".csv");
+		f << "Length, Frequency\n";
+		dump_cluster_freq(ct, f);
+		f.close();
+	}
+
+	if (p.write_cluster_len) {
+		vector<int> c, ct;
+		ht->cluster_len(c, ct);
+
+		f.open("len-" + fnstr + ".csv");
+		f << "Size\n";
+		dump_cluster_len(c, f);
+		f.close();
+
+		f.open("len_tombs-" + fnstr + ".csv");
+		f << "Size\n";
+		dump_cluster_len(ct, f);
+		f.close();
+	}
 
 	delete ht;
 	return 0;
+}
+
+void
+dump_cluster_freq(map<int,int> &h, ostream &o)
+{
+	for (auto it = h.begin(); it != h.end(); it++) 
+		o << it->first << "," << it->second << "\n";
+}
+
+void
+dump_cluster_len(vector<int> &h, ostream &o)
+{
+	for (auto it = h.begin(); it != h.end(); it++) 
+		o << *it << "\n";
 }
 
 void
@@ -235,10 +312,13 @@ setup_test_params(int argc, char **argv, params_t *p)
 	p->trials = 1'000'000;
 	p->ops_interval = 1'000'000;
 	p->verbose = false;
+	p->write_timing_data = false;
+	p->write_cluster_len = false;
+	p->write_cluster_freq = false;
 
 	char *ptype = NULL;
 	int c;
-	while ((c = getopt(argc, argv, "t:i:q:f:b:l:n:o:v")) != -1) {
+	while ((c = getopt(argc, argv, "t:i:q:f:b:l:n:o:vTFC")) != -1) {
 		switch(c) 
 		{
 		case 't':
@@ -266,11 +346,20 @@ setup_test_params(int argc, char **argv, params_t *p)
 		case 'n':
 			p->trials = stoi(optarg)*1000;
 			break;
+		case 'o':
+			p->ops_interval = stoi(optarg)*1000;
+			break;
 		case 'v':
 			p->verbose = true;
 			break;
-		case 'o':
-			p->ops_interval = stoi(optarg)*1000;
+		case 'T':
+			p->write_timing_data = true;
+			break;
+		case 'C':
+			p->write_cluster_len = true;
+			break;
+		case 'F':
+			p->write_cluster_freq = true;
 			break;
 		case '?':
 			if (optopt == 't' || optopt == 'i' || optopt == 'q' ||
@@ -285,8 +374,10 @@ setup_test_params(int argc, char **argv, params_t *p)
 				    "f [fail %],\n" 
 					"b [# of buckets], "
 					"n [# of operations in thousands], l [load factor]\n"
+					"o [timing data interval in thousands]\n"
 					"v [verbose mode]\n"
-					"o [histogram interval in thousands]\n";
+					"T [detailed timing data], C [cluster size data],"
+					"F [cluster size frequencies]\n";
 			return false;
 		default:
 			abort();

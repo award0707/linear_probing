@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <vector>
 #include <unordered_set>
+#include <map>
 #include <random>
 
 #include "primes.h"
@@ -91,7 +92,8 @@ main(int argc, char **argv)
 
 	cout << "\r[" << ht->load_factor()/p.loadfactor*100 << "% complete]     \n";
 	cout << "\n======== Loading ========\n";
-	cout << "\n\e[1mVerification\e[0m:\n"; ht->report_testing_stats();
+	cout << "\n\e[1mVerification\e[0m:\n";
+	ht->report_testing_stats();
 	display_stats(loadstats, p.verbose);
    	dump_timing_data(loadstats);
 	
@@ -156,12 +158,25 @@ main(int argc, char **argv)
 	if (opscount != p.ops_interval) runstats.wct.push_back(steady_clock::now());
 
 	cout << "\n======== Running ========\n\n";
-	cout << "\e[1mVerification\e[0m:\n"; ht->report_testing_stats();
+	cout << "\e[1mVerification\e[0m:\n";
+	ht->report_testing_stats();
 	display_stats(runstats, p.verbose);
+
+	
+	map<int,int> tombs, notombs;
 	dump_timing_data(runstats);
+	ht->cluster_hist(tombs,notombs);
+	dump_cluster_hist(tombs);
 
 	delete ht;
 	return 0;
+}
+
+void
+dump_cluster_hist(map<int,int> &h, ostream &o)
+{
+	for (auto it = h.begin(); it != h.end(); it++) 
+		o << it->first << "," << it->second << "\n";
 }
 
 void

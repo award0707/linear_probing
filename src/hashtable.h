@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <iostream>
-
+#include <map>
 
 class hashtable {
 	protected:
@@ -25,7 +25,7 @@ class hashtable {
 		uint64_t search_count;
 		double miss_running_avg;
 
-		virtual bool insert(record *t, int key, int value, bool rebuilding) =0;
+		virtual bool insert(record *t, int key, int value, bool rebuilding) = 0;
 		uint64_t hash(int k);
 		void update_misses(int misses, enum optype op);
 
@@ -54,6 +54,7 @@ class hashtable {
 
 		virtual void reset_perf_counts();
 		virtual void report_testing_stats(std::ostream &os = std::cout);
+		void cluster_hist(std::map<int,int> &tombs, std::map<int,int> &notombs);
 		double load_factor();
 		double avg_misses();
 		std::size_t table_size();

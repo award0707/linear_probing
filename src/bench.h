@@ -4,6 +4,7 @@
 #include <vector>
 #include <ostream>
 #include <string>
+#include <map>
 #include "hashtable.h"
 
 using std::chrono::steady_clock;
@@ -35,6 +36,7 @@ class comma_numpunct : public std::numpunct<char> {
 
 bool setup_test_params(int argc, char **argv, params_t *p);
 void display_stats(stats_t &stats, bool verbose);
+void dump_cluster_hist(std::map<int,int> &h, std::ostream &o = std::cout);
 void dump_timing_data(stats_t &stats, std::ostream &o = std::cout);
 void verbose_stats(hashtable *ht);
 void terse_stats(hashtable *ht);

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <map>
 #include "hashtable.h"
 #include "primes.h"
 
@@ -129,6 +130,32 @@ hashtable::report_testing_stats(std::ostream &os)
 			<< " (" << duplicates << " dup) / " << inserts
 	        << ", Queries: " << failed_queries << " / " << queries 
 	        << ", Removes: " << failed_removes << " / " << removes << "\n";	
+}
+
+void
+hashtable::cluster_hist(std::map<int,int> &tombs, std::map<int,int> &notombs)
+{
+	int cs = 0, cst = 0;	// cluster size, cluster size treating tombs as full
+	for (int i=0; i<buckets; ++i) {
+		switch(table[i].state) {
+			case FULL:
+				++cs;
+				++cst;
+				break;
+			case EMPTY:
+				if (cst) tombs[cst]++;
+				if (cs) notombs[cs]++;
+				cs = cst = 0;
+				break;
+			case DELETED:
+				if (cs) notombs[cs]++;
+				cs = 0;
+				++cst;
+				break;
+		}
+	}
+	if (cs) tombs[cst]++;
+	if (cst) notombs[cs]++;
 }
 
 double

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <vector>
 #include <map>
 #include "hashtable.h"
 #include "primes.h"
@@ -133,29 +134,78 @@ hashtable::report_testing_stats(std::ostream &os)
 }
 
 void
-hashtable::cluster_hist(std::map<int,int> &tombs, std::map<int,int> &notombs)
+hashtable::cluster_freq(std::map<int,int> &clust,
+						std::map<int,int> &clust_tombs)
 {
-	int cs = 0, cst = 0;	// cluster size, cluster size treating tombs as full
+	int cs = 0, csi = 0;	// cluster size, clusters size including tombs
+	int t=0;
 	for (int i=0; i<buckets; ++i) {
 		switch(table[i].state) {
 			case FULL:
 				++cs;
-				++cst;
+				++csi;
 				break;
 			case EMPTY:
-				if (cst) tombs[cst]++;
-				if (cs) notombs[cs]++;
-				cs = cst = 0;
+				if (cs) clust[cs]++;
+				if (csi) clust_tombs[csi]++;
+				cs = csi = 0;
 				break;
 			case DELETED:
-				if (cs) notombs[cs]++;
+				++csi;
+				if (cs) clust[cs]++;
 				cs = 0;
-				++cst;
+				++t;
 				break;
 		}
 	}
-	if (cs) tombs[cst]++;
-	if (cst) notombs[cs]++;
+	if (cs) clust[cs]++;
+	if (csi) clust_tombs[csi]++;
+
+	int sum=0, tsum=0;
+	 for(auto it = clust.begin(); it != clust.end(); ++it)
+		  sum += it->first * it->second;
+	cerr << "sum=" << sum << ",records=" << records << "\n";
+	 for(auto it = clust_tombs.begin(); it != clust_tombs.end(); ++it)
+		  tsum += it->first * it->second;
+	 cerr << "tsum=" <<tsum<<",tsum-t="<<tsum-t<<",records="<<records<<"\n";
+}
+
+void
+hashtable::cluster_len(std::vector<int> &clust,
+					   std::vector<int> &clust_tombs)
+{
+	int cs = 0, csi = 0;	// cluster size, cluster size including tombs
+	int t=0;
+	for (int i=0; i<buckets; ++i) {
+		switch(table[i].state) {
+			case FULL:
+				++cs;
+				++csi;
+				break;
+			case EMPTY:
+				if (cs) clust.push_back(cs);
+				if (csi) clust_tombs.push_back(csi);
+				cs = csi = 0;
+				break;
+			case DELETED:
+				++csi;
+				if (cs) clust.push_back(cs);
+				cs = 0;
+				++t;
+				break;
+		}
+	}
+	if (cs) clust.push_back(cs);
+	if (csi) clust_tombs.push_back(csi);
+
+	int sum=0, tsum=0;
+
+	 for(auto it = clust.begin(); it != clust.end(); ++it)
+		  sum += *it;
+	cerr << "sum=" << sum << ",records=" << records << "\n";
+	 for(auto it = clust_tombs.begin(); it != clust_tombs.end(); ++it)
+		  tsum += *it;
+	 cerr << "tsum=" <<tsum<<",tsum-t="<<tsum-t<<",records="<<records<<"\n";
 }
 
 double

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <iostream>
+#include <vector>
 #include <map>
 
 class hashtable {
@@ -54,7 +55,11 @@ class hashtable {
 
 		virtual void reset_perf_counts();
 		virtual void report_testing_stats(std::ostream &os = std::cout);
-		void cluster_hist(std::map<int,int> &tombs, std::map<int,int> &notombs);
+		void cluster_freq(std::map<int,int> &clust,
+						  std::map<int,int> &clust_tombs);
+		void cluster_len(std::vector<int> &clust,
+						 std::vector<int> &clust_tombs);
+
 		double load_factor();
 		double avg_misses();
 		std::size_t table_size();

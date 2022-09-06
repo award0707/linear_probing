@@ -164,12 +164,6 @@ main(int argc, char **argv)
 	ht->report_testing_stats();
 	display_stats(runstats, p.verbose);
 
-	// get the frequency of cluster sizes
-	// 'tombs' treats tombstones as empties like an insert
-	// 'notombs' treats them as full, as in queries and removes
-	map<int,int> tombs, notombs;
-	ht->cluster_hist(tombs,notombs);
-
 	//
 	// output phase
 	//
@@ -181,33 +175,70 @@ main(int argc, char **argv)
 		<< "-i" << p.insert << "q" << p.query << "r" << p.remove
 		<< "-f" << p.fails
 		<< "-ts" << ht->table_size()
-		<< "-lf" << p.loadfactor << "-"
-		<< std::put_time(&tm, "%d-%m-%Y");
+		<< "-lf" << p.loadfactor
+		<< std::put_time(&tm, "_%d-%m-%Y-%H-%M-%S");
 	auto fnstr = oss.str();
 
 	ofstream f;
 
-	f.open("loading-" + fnstr);
-	dump_timing_data(loadstats,f);
-	f.close();
-	
-	f.open("running-" + fnstr);
-	dump_timing_data(runstats,f);
-	f.close();
-	
-	f.open("cluster-" + fnstr);
-	dump_cluster_hist(tombs,f);
-	f.close();
+	if (p.write_timing_data) {
+		f.open("loading-" + fnstr + ".csv");
+		f << "Operations, Time, Ops/sec\n";
+		dump_timing_data(loadstats,f);
+		f.close();
+		
+		f.open("running-" + fnstr + ".csv");
+		f << "Operations, Time, Ops/sec\n";
+		dump_timing_data(runstats,f);
+		f.close();
+	}	
+
+	if (p.write_cluster_freq) {
+		map<int,int> c, ct;
+		ht->cluster_freq(c, ct);
+
+		f.open("freq-" + fnstr + ".csv");
+		f << "Length, Frequency\n";
+		dump_cluster_freq(c, f);
+		f.close();
+
+		f.open("freq_tombs-" + fnstr + ".csv");
+		f << "Length, Frequency\n";
+		dump_cluster_freq(ct, f);
+		f.close();
+	}
+
+	if (p.write_cluster_len) {
+		vector<int> c, ct;
+		ht->cluster_len(c, ct);
+
+		f.open("len-" + fnstr + ".csv");
+		f << "Size\n";
+		dump_cluster_len(c, f);
+		f.close();
+
+		f.open("len_tombs-" + fnstr + ".csv");
+		f << "Size\n";
+		dump_cluster_len(ct, f);
+		f.close();
+	}
 
 	delete ht;
 	return 0;
 }
 
 void
-dump_cluster_hist(map<int,int> &h, ostream &o)
+dump_cluster_freq(map<int,int> &h, ostream &o)
 {
 	for (auto it = h.begin(); it != h.end(); it++) 
 		o << it->first << "," << it->second << "\n";
+}
+
+void
+dump_cluster_len(vector<int> &h, ostream &o)
+{
+	for (auto it = h.begin(); it != h.end(); it++) 
+		o << *it << ",";
 }
 
 void
@@ -281,10 +312,13 @@ setup_test_params(int argc, char **argv, params_t *p)
 	p->trials = 1'000'000;
 	p->ops_interval = 1'000'000;
 	p->verbose = false;
+	p->write_timing_data = false;
+	p->write_cluster_len = false;
+	p->write_cluster_freq = false;
 
 	char *ptype = NULL;
 	int c;
-	while ((c = getopt(argc, argv, "t:i:q:f:b:l:n:o:v:F")) != -1) {
+	while ((c = getopt(argc, argv, "t:i:q:f:b:l:n:o:vTFC")) != -1) {
 		switch(c) 
 		{
 		case 't':
@@ -312,11 +346,20 @@ setup_test_params(int argc, char **argv, params_t *p)
 		case 'n':
 			p->trials = stoi(optarg)*1000;
 			break;
+		case 'o':
+			p->ops_interval = stoi(optarg)*1000;
+			break;
 		case 'v':
 			p->verbose = true;
 			break;
-		case 'o':
-			p->ops_interval = stoi(optarg)*1000;
+		case 'T':
+			p->write_timing_data = true;
+			break;
+		case 'C':
+			p->write_cluster_len = true;
+			break;
+		case 'F':
+			p->write_cluster_freq = true;
 			break;
 		case '?':
 			if (optopt == 't' || optopt == 'i' || optopt == 'q' ||
@@ -331,8 +374,10 @@ setup_test_params(int argc, char **argv, params_t *p)
 				    "f [fail %],\n" 
 					"b [# of buckets], "
 					"n [# of operations in thousands], l [load factor]\n"
-					"o [histogram interval in thousands]\n"
-					"v [verbose mode]\n";
+					"o [timing data interval in thousands]\n"
+					"v [verbose mode]\n"
+					"T [detailed timing data], C [cluster size data],"
+					"F [cluster size frequencies]\n";
 			return false;
 		default:
 			abort();

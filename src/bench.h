@@ -4,6 +4,7 @@
 #include <vector>
 #include <ostream>
 #include <string>
+#include <map>
 #include "hashtable.h"
 
 using std::chrono::steady_clock;
@@ -22,6 +23,9 @@ struct params_t {
 	double loadfactor;
 	size_t table_size, trials;
 	bool verbose;
+	bool write_timing_data;
+	bool write_cluster_len;
+	bool write_cluster_freq;
 	int ops_interval;
 	enum { none, linear, quadratic, ordered, graveyard } type;
 };
@@ -35,6 +39,8 @@ class comma_numpunct : public std::numpunct<char> {
 
 bool setup_test_params(int argc, char **argv, params_t *p);
 void display_stats(stats_t &stats, bool verbose);
+void dump_cluster_freq(std::map<int,int> &h, std::ostream &o = std::cout);
+void dump_cluster_len(std::vector<int> &h, std::ostream &o = std::cout);
 void dump_timing_data(stats_t &stats, std::ostream &o = std::cout);
 void verbose_stats(hashtable *ht);
 void terse_stats(hashtable *ht);

@@ -172,7 +172,7 @@ main(int argc, char **argv)
 	ostringstream oss;
 
 	oss << ht->table_type()
-		<< "-i" << p.insert << "q" << p.query << "r" << p.remove
+		<< "-i" << p.insert << "_q" << p.query << "_r" << p.remove
 		<< "-f" << p.fails
 		<< "-ts" << ht->table_size()
 		<< "-lf" << p.loadfactor
@@ -238,7 +238,7 @@ void
 dump_cluster_len(vector<int> &h, ostream &o)
 {
 	for (auto it = h.begin(); it != h.end(); it++) 
-		o << *it << ",";
+		o << *it << "\n";
 }
 
 void

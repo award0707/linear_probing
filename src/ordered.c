@@ -19,7 +19,7 @@ bool
 ordered::insert(record *t, int key, int value, bool rebuilding)
 {
 	int p, h0;
-	int miss = 0;
+	int miss = 1;
 	bool result = false, wrapped = false;
 
 	if (records>=buckets) { // table full
@@ -101,7 +101,7 @@ ordered::query(int key, int *value)
 	int p, h0;
 	bool res = false;
 	bool wrapped = false;
-	int miss = 0;
+	int miss = 1;
 
 	queries++;
 	h0 = hash(key);
@@ -135,7 +135,7 @@ ordered::remove(int key)
 {
 	int p, h0;
 	bool res = false, wrapped = false;
-	int miss = 0;
+	int miss = 1;
 
 	removes++;	
 	h0 = hash(key);

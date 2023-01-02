@@ -19,7 +19,7 @@ bool
 graveyard::insert(record *t, int key, int value, bool rebuilding)
 {
 	int p, h0;
-	int miss = 0;
+	int miss = 1;
 	bool result = false, wrapped = false;
 
 	if (records>=buckets) { // table full
@@ -101,7 +101,7 @@ graveyard::query(int key, int *value)
 	int p, h0;
 	bool res = false;
 	bool wrapped = false;
-	int miss = 0;
+	int miss = 1;
 
 	queries++;
 	h0 = hash(key);
@@ -135,7 +135,7 @@ graveyard::remove(int key)
 {
 	int p, h0;
 	bool res = false, wrapped = false;
-	int miss = 0;
+	int miss = 1;
 
 	removes++;	
 	h0 = hash(key);
@@ -194,7 +194,7 @@ graveyard::rebuild()
 
 	int interval = 2.0 / (1.0 - load_factor());
 	int p = 0, q = 0;
-	int blocksize = 100;
+	int blocksize = 32;
 	std::deque<record> recs;
 	do {
 		int b = blocksize;

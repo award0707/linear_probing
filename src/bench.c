@@ -9,6 +9,8 @@
 #include <map>
 #include <random>
 
+#include "pcg_random.hpp"
+
 #include "primes.h"
 #include "bench.h"
 #include "linear.h"
@@ -17,6 +19,8 @@
 #include "graveyard.h"
 
 using namespace std;
+
+#define KEY_MAX 2000000000L
 
 int
 main(int argc, char **argv)
@@ -47,21 +51,30 @@ main(int argc, char **argv)
 	}
 
 	//
+	// set up filename for outputs
+	//
+	auto t = std::time(nullptr);
+	auto tm = *std::localtime(&t);
+	ostringstream oss;
+	oss << ht->table_type()
+		<< "-i" << p.insert << "_q" << p.query << "_r" << p.remove
+		<< "-f" << p.fails
+		<< "-s" << ht->table_size()
+		<< "-l" << p.loadfactor
+		<< std::put_time(&tm, "_%d-%m-%Y-%H-%M-%S");
+	auto fnstr = oss.str();
+	ofstream f;
+
+	//
 	// generate the test dataset
 	//
-	random_device dev;
-	mt19937 rng(dev());
-	uniform_int_distribution<mt19937::result_type> data(0,2'000'000'000L);
-//	binomial_distribution<mt19937::result_type> data(1'000'000'000L,0.5);
+	pcg_extras::seed_seq_from<std::random_device> seed_source;
+	pcg32 rng(seed_source);
+	uniform_int_distribution<int> data(0,KEY_MAX);
+	// normal_distribution<> data(KEY_MAX, 2);
+	// x = round(data(rng));
 
-	cout << "Generating the test set.\n";
-	unordered_set<int> testset;
-	while(testset.size() < ht->table_size())
-		testset.insert(data(rng));
-
-	vector<int> keys(testset.size());
-	std::copy(testset.begin(), testset.end(), keys.begin());
-	unordered_set<int>().swap(testset);	// free the testset
+	vector<int> keys;
 
 	//
 	// initialization phase
@@ -74,12 +87,11 @@ main(int argc, char **argv)
 	cout << "Begin loading phase\n";
 	loadstats.wct.push_back(steady_clock::now());
 	int loadindex = 0;
+	size_t k = 0;
 	while(ht->load_factor() < p.loadfactor) {
-		size_t k = keys[loadindex];
+		k = data(rng);
 		if (ht->insert(k, k/2))
-			loadindex++;
-		else
-			cout << "an insert error occurred\n";
+			keys.push_back(k);
 		
 		loadstats.opcount++;
 		if (--opscount == 0) {
@@ -91,7 +103,6 @@ main(int argc, char **argv)
 	}
 	if (opscount != p.ops_interval)
 		loadstats.wct.push_back(steady_clock::now());
-	keys.resize(loadindex);
 
 	cout << "\r[" << ht->load_factor()/p.loadfactor*100 << "% complete]     \n";
 	cout << "\n======== Load complete ========\n";
@@ -99,6 +110,14 @@ main(int argc, char **argv)
 	ht->report_testing_stats();
 	display_stats(loadstats, p.verbose);
 	
+	if (p.write_stats) {
+		f.open("loadstats-" + fnstr + ".csv");
+		f << "Inserts, Search/insert, Queries, Search/query,"
+			" Removes, Search/remove, Total, Search/op\n";
+		ht->report_testing_stats(f,false);
+		f.close();
+	}
+
 	//
 	// running phase
 	// randomly insert, remove, or query, based on the specified proportions
@@ -164,62 +183,34 @@ main(int argc, char **argv)
 	ht->report_testing_stats();
 	display_stats(runstats, p.verbose);
 
-	//
-	// output phase
-	//
-	auto t = std::time(nullptr);
-	auto tm = *std::localtime(&t);
-	ostringstream oss;
-
-	oss << ht->table_type()
-		<< "-i" << p.insert << "_q" << p.query << "_r" << p.remove
-		<< "-f" << p.fails
-		<< "-ts" << ht->table_size()
-		<< "-lf" << p.loadfactor
-		<< std::put_time(&tm, "_%d-%m-%Y-%H-%M-%S");
-	auto fnstr = oss.str();
-
-	ofstream f;
+	if (p.write_stats) {
+		f.open("runstats-" + fnstr + ".csv");
+		f << "Inserts, Search/insert, Queries, Search/query,"
+			" Removes, Search/remove, Total, Search/op\n";
+		ht->report_testing_stats(f,false);
+		f.close();
+	}
 
 	if (p.write_timing_data) {
-		f.open("loading-" + fnstr + ".csv");
-		f << "Operations, Time, Ops/sec\n";
+		f.open("loadperf-" + fnstr + ".csv");
 		dump_timing_data(loadstats,f);
 		f.close();
 		
-		f.open("running-" + fnstr + ".csv");
-		f << "Operations, Time, Ops/sec\n";
+		f.open("runperf-" + fnstr + ".csv");
 		dump_timing_data(runstats,f);
 		f.close();
 	}	
 
-	if (p.write_cluster_freq) {
-		map<int,int> c, ct;
-		ht->cluster_freq(c, ct);
-
-		f.open("freq-" + fnstr + ".csv");
-		f << "Length, Frequency\n";
-		dump_cluster_freq(c, f);
-		f.close();
-
-		f.open("freq_tombs-" + fnstr + ".csv");
-		f << "Length, Frequency\n";
-		dump_cluster_freq(ct, f);
-		f.close();
-	}
-
 	if (p.write_cluster_len) {
-		vector<int> c, ct;
-		ht->cluster_len(c, ct);
+		vector<int> empty, tomb;
+		ht->cluster_len(empty, tomb);
 
-		f.open("len-" + fnstr + ".csv");
-		f << "Size\n";
-		dump_cluster_len(c, f);
+		f.open("clempty-" + fnstr + ".csv");
+		dump_cluster_len(empty, f);
 		f.close();
 
-		f.open("len_tombs-" + fnstr + ".csv");
-		f << "Size\n";
-		dump_cluster_len(ct, f);
+		f.open("cltomb-" + fnstr + ".csv");
+		dump_cluster_len(tomb, f);
 		f.close();
 	}
 
@@ -228,15 +219,9 @@ main(int argc, char **argv)
 }
 
 void
-dump_cluster_freq(map<int,int> &h, ostream &o)
-{
-	for (auto it = h.begin(); it != h.end(); it++) 
-		o << it->first << "," << it->second << "\n";
-}
-
-void
 dump_cluster_len(vector<int> &h, ostream &o)
 {
+	o << "Size\n";
 	for (auto it = h.begin(); it != h.end(); it++) 
 		o << *it << "\n";
 }
@@ -248,7 +233,8 @@ dump_timing_data(stats_t &stats, ostream &o)
 	int i;
 	locale l = o.getloc();
 	o.imbue(std::locale());
-	
+
+	o << "Operations, Time, Ops/sec\n";
 	for(i=1; i<stats.wct.size()-1; i++) {
 		t = stats.wct[i] - stats.wct[i-1];
 		o << stats.ops_interval*i << "," << t.count() << ","
@@ -314,11 +300,11 @@ setup_test_params(int argc, char **argv, params_t *p)
 	p->verbose = false;
 	p->write_timing_data = false;
 	p->write_cluster_len = false;
-	p->write_cluster_freq = false;
+	p->write_stats = false;
 
 	char *ptype = NULL;
 	int c;
-	while ((c = getopt(argc, argv, "t:i:q:f:b:l:n:o:vTFC")) != -1) {
+	while ((c = getopt(argc, argv, "t:i:q:f:b:l:n:o:vTCS")) != -1) {
 		switch(c) 
 		{
 		case 't':
@@ -358,8 +344,8 @@ setup_test_params(int argc, char **argv, params_t *p)
 		case 'C':
 			p->write_cluster_len = true;
 			break;
-		case 'F':
-			p->write_cluster_freq = true;
+		case 'S':
+			p->write_stats = true;
 			break;
 		case '?':
 			if (optopt == 't' || optopt == 'i' || optopt == 'q' ||
@@ -376,8 +362,8 @@ setup_test_params(int argc, char **argv, params_t *p)
 					"n [# of operations in thousands], l [load factor]\n"
 					"o [timing data interval in thousands]\n"
 					"v [verbose mode]\n"
-					"T [detailed timing data], C [cluster size data],"
-					"F [cluster size frequencies]\n";
+					"T [detailed timing data], C [cluster size data], "
+					"S [table statistics]\n";
 			return false;
 		default:
 			abort();

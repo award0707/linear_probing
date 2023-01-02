@@ -9,9 +9,10 @@ linear::insert(record *t, int key, int value, bool rebuilding)
 {
 	int h = hash(key);
 	bool res = false;
-	int miss = 0;
+	int miss = 1;
 
 	if (records>=buckets) {
+		cerr << "table full\n";
 		failed_inserts++;
 		return false;
 	}

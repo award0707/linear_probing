@@ -30,8 +30,7 @@ ordered::insert(record *t, int key, int value, bool rebuilding)
 	h0 = hash(key); // probe the table, starting at t[hash(key)]
 	p = max(table_start,h0);
 	while(1) {
-		if (t[p].state == EMPTY)
-//			t[p].state == DELETED && t[p].key >= h0)
+		if (t[p].state != FULL)
 		{
 			// found an empty slot or a usable tombstone
 			if (wrapped && p == table_start) ++table_start;

@@ -3,10 +3,11 @@
 #include <vector>
 #include <random>
 #include "ordered.h"
+#include "linear.h"
 #include "graveyard.h"
 
 #define SIZE 100
-#define TABLETYPE graveyard /* set to "ordered" or "graveyard" */
+#define TABLETYPE linear
 #define INFINITE		/* test in an infinite loop, breaking only on error */
 //#define READD_BEFORE	/* do a readd test before rebuilding */
 
@@ -20,20 +21,20 @@ main()
 	random_device dev;
 	mt19937 rng(dev());
 	uniform_int_distribution<mt19937::result_type> testset(0,9999);
-	uniform_int_distribution<mt19937::result_type> secondset(10000-SIZE,9999);
+	uniform_int_distribution<mt19937::result_type> secondset(10000-SIZE-5,9999);
 
 #ifdef INFINITE
 	while (1) {
 #endif
 		TABLETYPE t(SIZE);
-		vector<int> keys(SIZE,0);
+		vector<int> keys(SIZE-5,0);
 
 		t.disable_rebuilds = true;
 		cout << "Start\n";
 
 		// fill up the table completely
 		t.set_max_load_factor(1.0);
-		for(int i=0; i<SIZE; i++) {
+		for(int i=0; i<SIZE-5; i++) {
 			int k = testset(rng);
 			if (t.insert(k,i)) 
 				keys[i] = k;
@@ -125,6 +126,30 @@ display(TABLETYPE &h, const char *message)
 	cout << "\n";
 }
 
+#if TABLETYPE == linear
+void
+dump(TABLETYPE &h)
+{
+	for(int i=0; i<h.buckets; i++) {
+		if ((i!=0) && (i%10 == 0)) std::cout << "\n";
+		std::cout.width(4);
+		std::cout << i;
+		std::cout << ": [";
+		if(h.table[i].state == hashtable::FULL) {
+			std::cout.width(4);
+			std::cout << h.hash(h.table[i].key) << "]";
+			std::cout.width(4);
+			std::cout << h.table[i].key;
+		} else if (h.table[i].state == hashtable::EMPTY) {
+			std::cout << "    ]    ";
+		} else {
+			std::cout.width(4);
+			std::cout << "____]";
+			std::cout << "____";
+		}
+	}
+}
+#elif
 void
 dump(TABLETYPE &h)
 {
@@ -147,3 +172,4 @@ dump(TABLETYPE &h)
 		}
 	}
 }
+#endif

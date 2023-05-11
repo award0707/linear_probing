@@ -6,7 +6,6 @@ A rudimentary hash table underlying a key-value store.
 Implemented some different open-addressing schemes for comparison purposes.
 
 - Linear probing
-- Quadratic probing
 - Ordered linear probing
 - Graveyard hashing
 

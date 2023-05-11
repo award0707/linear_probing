@@ -1,17 +1,27 @@
 #include <iostream>
+#include <cassert>
 #include "linear.h"
 #include "primes.h"
 
 using std::cerr, std::size_t;
+
+linear::linear(size_t b) : hashtable(b)
+{
+	reset_rebuild_window();
+	rebuilds = 0;
+	tombs = 0;
+	disable_rebuilds = false;
+}	
 
 bool 
 linear::insert(record *t, int key, int value, bool rebuilding) 
 {
 	int h = hash(key);
 	bool res = false;
-	int miss = 0;
+	int miss = 1;
 
 	if (records>=buckets) {
+		cerr << "table full\n";
 		failed_inserts++;
 		return false;
 	}
@@ -26,7 +36,8 @@ linear::insert(record *t, int key, int value, bool rebuilding)
 		}
 		else
 		{
-			if (t[h].state == EMPTY || t[h].state == DELETED) {
+			if (t[h].state != FULL) {
+				if (t[h].state == DELETED) --tombs;
 				t[h] = {key, value, FULL};
 				records++;
 				res = true;
@@ -34,16 +45,25 @@ linear::insert(record *t, int key, int value, bool rebuilding)
 			}
 		}
 		++h;
-		if (h == buckets) h=0;
+		if (h == buckets) h=0; 
 		miss++;
 	}
 		
+	rebuilding ? ++rebuild_inserts : ++inserts;
 	if (miss) update_misses(miss, rebuilding ? REBUILD : INSERT);
 
 	if (res && load_factor() > max_load_factor) { 
 		cerr << "load factor " << max_load_factor << " exceeded\n";
 		resize(primes[++prime_index]);
+		tombs = 0;
 	}
+
+
+	if (!rebuilding) { 
+		--rebuild_window;
+		if (rebuild_window <= 0 && !disable_rebuilds) rebuild();
+	}
+
 	return res;
 }
 
@@ -88,7 +108,8 @@ linear::remove(int key)
 		
 		if (table[h].state == FULL && table[h].key == key) {
 			table[h].state = DELETED;
-			records--;
+			++tombs;
+			--records;
 			res = true;
 			break;
 		}
@@ -102,6 +123,18 @@ linear::remove(int key)
 
 	if (miss) update_misses(miss, REMOVE);
 	return res;
+}
+
+
+void
+linear::reset_rebuild_window()
+{
+	rebuild_window = buckets/2 * (1.0 - load_factor());
+}
+
+void
+linear::rebuild()
+{
 }
 
 

@@ -9,7 +9,7 @@ quadratic::insert(record *t, int key, int value, bool rebuilding)
 {
 	int hv = hash(key);
 	bool res = false;
-	int miss = 0;
+	int miss = 1;
 
 	if (records>=buckets) { 
 		failed_inserts++;
@@ -57,7 +57,7 @@ quadratic::query(int key, int *value)
 {
 	int hv = hash(key);
 	bool res = false;
-	int miss = 0;
+	int miss = 1;
 
 	queries++;
 	for(int i=0;i<buckets;i++) {
@@ -81,7 +81,7 @@ quadratic::remove(int key)
 {
 	int hv = hash(key);
 	bool res = false;
-	int miss = 0;
+	int miss = 1;
 
 	removes++;	
 	for(int i=0;i<buckets;i++) {

@@ -36,7 +36,7 @@ hashtable::~hashtable()
 	delete[] table;	
 }
 
-uint64_t
+int
 hashtable::hash(int k)
 {
 	int r = k % buckets;
@@ -56,7 +56,7 @@ hashtable::resize(uint64_t b)
 	records = 0;
 	buckets = b;
 
-	for(uint64_t i=0; i<oldbuckets; ++i) {
+	for(uint32_t i=0; i<oldbuckets; ++i) {
 		if (table[i].state == FULL)
 			insert(newtable, table[i].key, table[i].value, true);
 	}
@@ -105,86 +105,73 @@ hashtable::reset_perf_counts()
 }
 
 void
-hashtable::report_testing_stats(std::ostream &os)
+hashtable::report_testing_stats(std::ostream &os, bool verbose)
 {
-	os << "Misses\n";
-	os << "Insert: " << insert_misses;
-	if (inserts)
-		os << ", " << (double)insert_misses/inserts << " miss/insert";
-	os << "\n";
-	
-	os << "Query: " << query_misses;
-    if (queries)
-		os << ", " << (double)query_misses/queries << " miss/query";
-	os << "\n";
-	
-	os << "Remove: " << remove_misses;
-	if (removes)
-			os << ", " << (double)remove_misses/removes << " miss/remove";
-	os << "\n";
+	if (verbose) {
+		os << "Misses\n";
+		os << "Insert: " << insert_misses;
+		if (inserts)
+			os << ", " << (double)insert_misses/inserts << " miss/insert";
+		os << "\n";
+		
+		os << "Query: " << query_misses;
+		if (queries)
+			os << ", " << (double)query_misses/queries << " miss/query";
+		os << "\n";
+		
+		os << "Remove: " << remove_misses;
+		if (removes)
+				os << ", " << (double)remove_misses/removes << " miss/remove";
+		os << "\n";
 
-	os << "Total: " << total_misses
-		<< ", " << (double)total_misses/(inserts+queries+removes)
-		<< " miss/op\n";
+		os << "Total: " << total_misses
+			<< ", " << (double)total_misses/(inserts+queries+removes)
+			<< " miss/op\n";
 
-	os << "Fails\nInserts: " << failed_inserts
-			<< " (" << duplicates << " dup) / " << inserts
-	        << ", Queries: " << failed_queries << " / " << queries 
-	        << ", Removes: " << failed_removes << " / " << removes << "\n";	
+		os << "Fails\nInserts: " << failed_inserts
+				<< " (" << duplicates << " dup) / " << inserts
+				<< ", Queries: " << failed_queries << " / " << queries 
+				<< ", Removes: " << failed_removes << " / " << removes << "\n";	
+	} else {
+		os << insert_misses << ","
+			<< (inserts ? (double)insert_misses/inserts : 0) << ","
+			<< query_misses << ","
+			<< (queries ? (double)query_misses/queries : 0) << ","
+			<< remove_misses << ","
+			<< (removes ? (double)remove_misses/removes : 0) << ","
+			<< total_misses << ","
+			<< (double)total_misses/(inserts+queries+removes) << "\n";
+	}
 }
 
 void
-hashtable::cluster_freq(std::map<int,int> &clust,
-						std::map<int,int> &clust_tombs)
+hashtable::cluster_len(std::vector<int> &empty_clust,
+					   std::vector<int> &tomb_clust)
 {
-	int cs = 0, csi = 0;	// cluster size, clusters size including tombs
+	// count two sorts of cluster:
+	// one bounded by tombstones (as in a query)
+	// and one bounded by empty slots (so can contain tombstones)
+	int empty = 0, tomb = 0; 
 	for (int i=0; i<buckets; ++i) {
 		switch(table[i].state) {
 			case FULL:
-				++cs;
-				++csi;
+				++empty;
+				++tomb;
 				break;
 			case EMPTY:
-				if (cs) clust[cs]++;
-				if (csi) clust_tombs[csi]++;
-				cs = csi = 0;
+				if (empty) empty_clust.push_back(empty);
+				if (tomb) tomb_clust.push_back(tomb);
+				empty = tomb = 0;
 				break;
 			case DELETED:
-				++csi;
-				if (cs) clust[cs]++;
-				cs = 0;
+				++empty;
+				if (tomb) tomb_clust.push_back(tomb);
+				tomb = 0;
 				break;
 		}
 	}
-	if (cs) clust[cs]++;
-	if (csi) clust_tombs[csi]++;
-}
-
-void
-hashtable::cluster_len(std::vector<int> &clust,
-					   std::vector<int> &clust_tombs)
-{
-	int cs = 0, csi = 0;	// cluster size, cluster size including tombs
-	for (int i=0; i<buckets; ++i) {
-		switch(table[i].state) {
-			case FULL:
-				++cs;
-				++csi;
-				break;
-			case EMPTY:
-				if (cs) clust.push_back(cs);
-				if (csi) clust_tombs.push_back(csi);
-				cs = csi = 0;
-				break;
-			case DELETED:
-				++csi;
-				if (cs) clust.push_back(cs);
-				cs = 0;
-				break;
-		}
-	}
-	if (cs) clust.push_back(cs);
-	if (csi) clust_tombs.push_back(csi);
+	if (empty) empty_clust.push_back(empty);
+	if (tomb) tomb_clust.push_back(tomb);
 }
 
 double

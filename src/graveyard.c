@@ -19,7 +19,7 @@ bool
 graveyard::insert(record *t, int key, int value, bool rebuilding)
 {
 	int p, h0;
-	int miss = 0;
+	int miss = 1;
 	bool result = false, wrapped = false;
 
 	if (records>=buckets) { // table full
@@ -30,7 +30,7 @@ graveyard::insert(record *t, int key, int value, bool rebuilding)
 	h0 = hash(key); // probe the table, starting at t[hash(key)]
 	p = max(table_start,h0);
 	while(1) {
-		if (t[p].state == EMPTY)
+		if (t[p].state != FULL)
 		{
 			// found an empty slot
 			if (wrapped && p == table_start) ++table_start;
@@ -101,7 +101,7 @@ graveyard::query(int key, int *value)
 	int p, h0;
 	bool res = false;
 	bool wrapped = false;
-	int miss = 0;
+	int miss = 1;
 
 	queries++;
 	h0 = hash(key);
@@ -135,7 +135,7 @@ graveyard::remove(int key)
 {
 	int p, h0;
 	bool res = false, wrapped = false;
-	int miss = 0;
+	int miss = 1;
 
 	removes++;	
 	h0 = hash(key);
@@ -174,10 +174,13 @@ void
 graveyard::reset_rebuild_window()
 {
 	// the rebuild window gets smaller as load factor increases
+	// R = n/(4x) = n/4 * (1-lf)
 	// for graveyard, it's half the size of the window used for ordered probing
-	rebuild_window = buckets * (1.0 - load_factor()) / 4.0;
+	rebuild_window = buckets/4 * (1.0 - load_factor());
 //	cerr << "Rebuild window " << rebuilds << ": " << rebuild_window << ", ";
 }
+
+
 
 void
 graveyard::rebuild()
@@ -186,48 +189,43 @@ graveyard::rebuild()
 
 	// temporarily save the table overflow 
 	for(int p = 0; p < table_start; ++p) {
-		if (table[p].state == FULL) 
+		if (table[p].state == FULL) {
 			overflow.push_back(table[p]);
+			--records;
+		}
 		table[p].state = EMPTY;
 	}
 	table_start = 0;
 
+	int tombcount = buckets/2*(1.0-load_factor());
 	int interval = 2.0 / (1.0 - load_factor());
-	int p = 0, q = 0;
-	int blocksize = 100;
-	std::deque<record> recs;
-	do {
-		int b = blocksize;
-		// parse slots, saving records
-		while (b-- && q < buckets) {
-			if (table[q].state == FULL)
-				recs.push_back(table[q]);
-			++q;
-		}
-
-		// append overflow to the end of the final block
-		if (q == buckets) 
-			for (int i = 0; i < overflow.size(); i++) 
-				recs.push_back(overflow[i]);
-
-		// place the keys back in the table, in the order they were collected
-		while(!recs.empty() && p < q) {
-			record r = recs.front();
-			int h = hash(r.key);
-			while (p < h) {
-				if (p % interval == 0)
-					table[p].state = DELETED;
-				else
-					table[p].state = EMPTY;
-				++p;
+	record *aux = new record[tombcount];
+	int top = -1;
+	
+	int p, q;
+	for(p = 0, q = 1; p < buckets; p++) {
+		if (p % interval == 0) {
+			if (table[p].state == FULL) aux[++top] = table[p];
+			table[p].state = DELETED;
+			p++;
+		} else {
+			if (table[p].state != FULL) {
 			}
-			if (p % interval == 0) { table[p].state = DELETED; ++p; }
-			if (p == q) break;
-			table[p] = r;
-			recs.pop_front();
-			++p;
+			if (top != -1) {
+				;
+			} else {
+				while(q < buckets && table[q].state != FULL) q++;
+				if (q == buckets) break;
+				if (hash(table[q].key) <= p) {
+					table[p] = table[q];
+					table[q].state = EMPTY;
+				} else {
+					table[p].state = EMPTY;
+				}
+			}
 		}
-	} while (q < buckets);
+		if (p > q) cerr << "LELZ\n";
+	}
 
 	// clear to the end of table, then manually reinsert any remaining elements
 	while (p < buckets) {
@@ -237,15 +235,21 @@ graveyard::rebuild()
 			table[p].state = EMPTY;
 		++p;
 	}
-	records -= recs.size();		// prevent overcounting records
-	while (!recs.empty()) {
-		record r = recs.front();
+
+	while (top > -1) {
+		insert(table, aux[top].key, aux[top].value, true);
+		--records;
+		--top;
+	}
+
+	for (int i = 0; i < overflow.size(); i++) {
+		record r = overflow[i];
 		insert(table, r.key, r.value, true);
-		recs.pop_front();
 	}
 
 	++rebuilds;
 	reset_rebuild_window();	
+	delete aux;
 }
 
 void

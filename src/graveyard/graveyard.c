@@ -195,10 +195,8 @@ graveyard_aos::result graveyard_aos::insert(key_t k, value_t v, bool rebuilding)
 		return result::FULLTABLE;
 	}
 
-	if (!probe(k,
-	           &slot,
-	           rebuilding ? optype::REBUILD_INS : optype::INSERT,
-	           &wrapped)) {
+	optype ins_type = rebuilding ? optype::REBUILD_INS : optype::INSERT;
+	if (!probe(k, &slot, ins_type, &wrapped)) {
 		++failed_inserts;
 		++duplicates;
 		return result::DUPLICATE;
@@ -349,8 +347,8 @@ void graveyard_aos::update_misses(uint64_t misses, enum optype op)
 	}
 	if (misses > longest_search) longest_search = misses;
 
-	//miss_running_avg =
-	//    miss_running_avg * (double)(n-1)/n + (double)misses/n;
+	miss_running_avg =
+	    miss_running_avg * (double)(n-1)/n + (double)misses/n;
 }
 
 void graveyard_aos::reset_perf_counts()

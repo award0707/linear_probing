@@ -43,12 +43,15 @@ class graveyard_aos {
 		void reset_rebuild_window();
 		void update_misses(uint64_t misses, enum optype op);
 
-		inline slot_state state(uint64_t k) const
-			{ return table[k].state; }
-		inline key_t& key(uint64_t k) const
-			{ return table[k].key; }
-		inline value_t& value(uint64_t k) const
-			{ return table[k].value; }
+		inline slot_state state(uint64_t k) const {
+			return table[k].state;
+		}
+		inline key_t& key(uint64_t k) const {
+			return table[k].key;
+		}
+		inline value_t& value(uint64_t k) const {
+			return table[k].value;
+		}
 
 		inline void setkey(uint64_t k, key_t x)
 			{ table[k].key = x; }
@@ -59,17 +62,21 @@ class graveyard_aos {
 		inline void setempty(uint64_t k) { table[k].state = EMPTY; }
 		inline void settomb(uint64_t k) { table[k].state = TOMB; }
 
-		inline bool full(uint64_t k) const { return state(k) == FULL; }
-		inline bool empty(uint64_t k) const
-			{ return state(k) == EMPTY; }
-		inline bool tomb(uint64_t k) const
-			{ return state(k) == TOMB; }
+		inline bool full(uint64_t k) const {
+			return state(k) == FULL;
+		}
+		inline bool empty(uint64_t k) const {
+			return state(k) == EMPTY;
+		}
+		inline bool tomb(uint64_t k) const {
+			return state(k) == TOMB;
+		}
 
 	public:
 		enum result { SUCCESS, FAILURE, REBUILD, DUPLICATE, FULLTABLE };
 
 		graveyard_aos(std::size_t b);
-		~graveyard_aos(); 
+		~graveyard_aos();
 		std::string table_type() { return "graveyard_aos"; }
 
 		void resize(std::size_t);

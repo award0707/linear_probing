@@ -1,43 +1,32 @@
 CC=g++ -std=c++2a
-#CFLAGS=-ggdb
+#CFLAGS=-ggdb -O0
 CFLAGS=-O2 -Wall
 INC = -I. -I../tools
-OBJDIR = obj
 
 TABLETYPE = ordered
+benches = tabletest querystats xtester floatstats loadbench 
 
 DEPS = $(wildcard ../tools/primes.*) $(wildcard *.h)
 SRC = $(TABLETYPE).c
-OBJ = $(SRC:%.c=$(OBJDIR)/%.o) $(OBJDIR)/primes.o
+OBJ = obj/$(TABLETYPE).o obj/primes.o
 
-all: tabletest loadbench
+all: tests
 
-bench: runbench loadbench
-
-$(OBJDIR)/%.o: %.c $(DEPS) 
-	mkdir -p $(OBJDIR)
+obj/%.o: %.c $(DEPS) 
+	mkdir -p obj
 	@echo $@
 	$(CC) -c -o $@ $< $(CFLAGS) $(INC)
 
-$(OBJDIR)/primes.o: ../tools/primes.c
-	mkdir -p $(OBJDIR)
+obj/primes.o: ../tools/primes.c
+	mkdir -p obj
 	@echo $@
 	$(CC) -c -o $@ $< $(CFLAGS) $(INC)
 
-tabletest: $(OBJDIR)/tabletest.o $(OBJ)
+$(benches): %: obj/%.o $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(INC)
 
-runbench: $(OBJDIR)/runbench.o $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(INC)
-
-loadbench: $(OBJDIR)/loadbench.o $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(INC)
-
-test:
-	@echo $(DEPS)
-	@echo $(SRC)
-	@echo $(OBJ)
+tests: $(benches)
 
 clean :
-	rm $(OBJDIR)/* bench tabletest loadbench
+	rm obj/* $(benches)
 

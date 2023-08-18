@@ -20,8 +20,6 @@ ordered_aos::ordered_aos(uint64_t b)
 	miss_running_avg = 0;
 	search_count = 0;
 	total_misses = 0;
-	reset_perf_counts();
-	reset_rebuild_window();
 
 	buckets = b;
 	records = 0;
@@ -29,6 +27,9 @@ ordered_aos::ordered_aos(uint64_t b)
 	tombs = 0;
 	table_head = 0;
 	disable_rebuilds = false;
+
+	reset_perf_counts();
+	reset_rebuild_window();
 }	
 
 ordered_aos::~ordered_aos()
@@ -75,7 +76,7 @@ bool ordered_aos::probe(int k, uint64_t *slot, optype operation, bool* wrapped)
 
 	switch(operation) {
 	case INSERT:
-	case REBUILD:
+	case REBUILD_INS:
 		res = true;
 		while(1) {
 			if (full(s) && key(s) == k) {	// duplicate key
@@ -137,31 +138,40 @@ uint64_t ordered_aos::shift(uint64_t start)
 	return end;
 }
 
-ordered_aos::insert_result ordered_aos::insert(int k, int v, bool rebuilding) 
+ordered_aos::result ordered_aos::insert(int k, int v, bool rebuilding) 
 {
 	uint64_t slot;
 	bool wrapped=false;
 
 	if (records>=buckets) {
 		failed_inserts++;
-		return FAIL_FULL;
+		return result::FULLTABLE;
 	}
 
-	if (!probe(k, &slot, rebuilding ? REBUILD : INSERT, &wrapped)) {
+	optype ins_type = rebuilding ? optype::REBUILD_INS : optype::INSERT;
+	if (!probe(k, &slot, ins_type, &wrapped)) {
 		++failed_inserts;
 		++duplicates;
-		return FAIL_DUP;
+		return result::DUPLICATE;
 	}
 
 	if (!empty(slot)) {
 		uint64_t end = shift(slot);
 		if (((end < slot) || wrapped) && end >= table_head) ++table_head;
+		if (!rebuilding) {
+			if (end >= slot)
+				insert_shifts += end - slot;
+			else
+				insert_shifts += buckets - slot + end;
+		}
 	} else if (wrapped && slot == table_head)
 		table_head++;
 	
-	table[slot] = {k, v, FULL};
+	setkey(slot, k);
+	setvalue(slot, v);
+	setfull(slot);
+
 	++records;
-	
 	rebuilding ? rebuild_inserts++ : inserts++;
 
 	// automatic resizing
@@ -172,10 +182,10 @@ ordered_aos::insert_result ordered_aos::insert(int k, int v, bool rebuilding)
 
 	if (!rebuilding) { 
 		--rebuild_window;
-		if (rebuild_window <= 0 && !disable_rebuilds) return NEEDS_REBUILD;
+		if (rebuild_window <= 0) return result::REBUILD;
 	}
 
-	return SUCCESS;
+	return result::SUCCESS;
 }
 
 bool 
@@ -200,7 +210,7 @@ ordered_aos::remove(int k)
 	++removes;	
 
 	if (probe(k, &slot, REMOVE)) {
-		table[slot].state = TOMB;
+		settomb(slot);
 		++tombs;
 		--records;
 		return true;
@@ -209,7 +219,6 @@ ordered_aos::remove(int k)
 	++failed_removes;
 	return false;
 }
-
 
 void
 ordered_aos::reset_rebuild_window()
@@ -251,8 +260,7 @@ ordered_aos::rebuild()
 	}
 
 	// reinsert the table overflow.
-	for (std::size_t i = 0; i < overflow.size(); i++) 
-		insert(overflow[i].key, overflow[i].value, true); 
+	for (record r : overflow) insert(r.key, r.value, true);
 
 	++rebuilds;
 	reset_rebuild_window();	
@@ -283,6 +291,7 @@ void ordered_aos::reset_perf_counts()
 	inserts = queries = removes = rebuild_inserts = 0;
 	insert_misses = query_misses = remove_misses = 0;
 	rebuild_insert_misses = 0;
+	insert_shifts = 0;
 	failed_inserts = failed_removes = failed_queries = duplicates = 0;
 	longest_search = 0;
 	total_misses = 0;
@@ -335,33 +344,48 @@ void ordered_aos::report_testing_stats(std::ostream &os, bool verbose)
 	}
 }
 
-void ordered_aos::cluster_len(std::vector<int> &empty_clust,
-		std::vector<int> &tomb_clust)
+// fill in a histogram of cluster lengths (tombstones count as boundaries)
+void ordered_aos::cluster_len(std::map<int,int> *clust) const
 {
-	// count two sorts of cluster:
-	// one bounded by tombstones (as in a query)
-	// and one bounded by empty slots (so can contain tombstones)
-	int empty = 0, tomb = 0; 
-	for (uint64_t i=0; i<buckets; ++i) {
-		switch(table[i].state) {
-		case FULL:
-			++empty;
-			++tomb;
-			break;
-		case EMPTY:
-			if (empty) empty_clust.push_back(empty);
-			if (tomb) tomb_clust.push_back(tomb);
-			empty = tomb = 0;
-			break;
-		case TOMB:
-			++empty;
-			if (tomb) tomb_clust.push_back(tomb);
-			tomb = 0;
-			break;
+	uint64_t last_empty, last_tomb; 
+	last_empty = last_tomb = table_head;
+	for(uint64_t p = table_head; p < buckets; ++p) {
+		if (!full(p)) {
+			int dist = std::min(p - last_empty, p - last_tomb);
+			if (dist > 1) (*clust)[dist-1]++;
+			if (empty(p)) last_empty = p;
+			if (tomb(p)) last_tomb = p;
 		}
 	}
-	if (empty) empty_clust.push_back(empty);
-	if (tomb) tomb_clust.push_back(tomb);
+
+	// keep counting once we wrap the table
+	for(uint64_t p = 0; p < table_head; ++p) {
+		if (!full(p)) {
+			// detect if the cluster wrapped
+			int x = last_empty >= table_head ?
+				(buckets - last_empty + p) : (p - last_empty);
+			int y = last_tomb >= table_head ?
+				(buckets - last_tomb + p) : (p - last_tomb);
+			int dist = std::min(x, y);
+			if (dist > 1) (*clust)[dist-1]++;
+			if (empty(p)) last_empty = p;
+			if (tomb(p)) last_tomb = p;
+		}
+	}
+}
+
+// fill in a histogram of shift lengths
+// i.e. the distance from a key's slot and the hash of that key
+void ordered_aos::shift_distance(std::map<int,int> *disp) const
+{
+	for(uint64_t p = 0; p < buckets; ++p) {
+		if (full(p)) {
+			uint64_t h = hash(key(p));
+			int d = (p >= table_head ? p - h : buckets - h + p);
+			assert(d >= 0); // invariant broken
+			(*disp)[d]++;
+		}
+	 }
 }
 
 // ensure keys are monotonically increasing

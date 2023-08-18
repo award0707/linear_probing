@@ -3,13 +3,14 @@
 #include <vector>
 #include <random>
 #include "graveyard.h"
+#include "ordered.h"
 
 #define SIZE 200 
-#define INFINITE		/* test in an infinite loop, breaking only on error */
+#define INFINITE	/* test in an infinite loop, breaking only on error */
 #define READD_BEFORE	/* do a readd test before rebuilding */
 
 using namespace std;
-using hashtable = graveyard_aos;
+using hashtable = ordered_aos;
 using result = hashtable::result;
 
 bool check(hashtable &h)
@@ -66,12 +67,13 @@ main()
 			}
 		}
 		display(t, "initialize:");
-		if (!check(t)) return 1;	
+		if (!check(t)) return 1;
 		// remove half the items
 		for(int i=0; i<SIZE/2; ++i) {
 			uniform_int_distribution<> pick(0,keys.size()-1);
 			int p = pick(rng);
-			if(!t.remove(keys[p])) {
+			result r = t.remove(keys[p]);
+			if(r != result::SUCCESS) {
 				cout << "failed remove [" << p << "]:" << keys[p] << "!\n";
 				--i;
 			} else {

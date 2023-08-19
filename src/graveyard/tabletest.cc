@@ -2,15 +2,17 @@
 #include <iomanip>
 #include <vector>
 #include <random>
+
 #include "graveyard.h"
 #include "ordered.h"
+#include "linear.h"
 
-#define SIZE 200 
+#define SIZE 200
 #define INFINITE	/* test in an infinite loop, breaking only on error */
 #define READD_BEFORE	/* do a readd test before rebuilding */
 
 using namespace std;
-using hashtable = ordered_aos;
+using hashtable = ordered_aos<int, int>;
 using result = hashtable::result;
 
 bool check(hashtable &h)
@@ -31,8 +33,8 @@ display(hashtable &h, const char *message)
 {
 	cout << "\n" << message << "\n---------\n";
 	h.dump();
-	cout << "\nrecords: " << h.num_records() << "/" << h.table_size() << "\n";
-	cout << "\n";
+	cout << "\nrecords: " << h.num_records() << "/" << h.table_size();
+	cout << "\n\n";
 }
 
 int
@@ -40,10 +42,10 @@ main()
 {
 	random_device dev;
 	mt19937 rng(dev());
-	uniform_int_distribution<mt19937::result_type> testset(0,9999);
-	uniform_int_distribution<mt19937::result_type> secondset(10000-SIZE-5,9999);
+	uniform_int_distribution<mt19937::result_type> testset(0,9999-SIZE);
+	uniform_int_distribution<mt19937::result_type> testset2(9999-SIZE,9999);
 	uint64_t run = 0;
-	
+
 #ifdef INFINITE
 	while (1) {
 #endif
@@ -51,7 +53,7 @@ main()
 		vector<int> keys(SIZE,0);
 
 		t.disable_rebuilds = true;
-		cout << "Start run #" << ++run << "\n";
+		cout << t.table_type() << ": start run #" << ++run << "\n";
 
 		// fill up the table completely
 		t.set_max_load_factor(1.0);
@@ -62,19 +64,23 @@ main()
 			case result::SUCCESS: // fall through
 			case result::REBUILD: keys[i]=k; break;
 			case result::DUPLICATE: --i; break;
-			case result::FULLTABLE: cerr << "Table full\n"; return 1;
+			case result::FULLTABLE: cerr << "Table full\n";
+			                        return 1;
 			default: break;
 			}
 		}
 		display(t, "initialize:");
 		if (!check(t)) return 1;
+
 		// remove half the items
 		for(int i=0; i<SIZE/2; ++i) {
 			uniform_int_distribution<> pick(0,keys.size()-1);
 			int p = pick(rng);
 			result r = t.remove(keys[p]);
-			if(r != result::SUCCESS) {
-				cout << "failed remove [" << p << "]:" << keys[p] << "!\n";
+			if(r == result::FAILURE) {
+				cout << "failed remove [" << p << "]:"
+				     << keys[p] << "!\n";
+				exit(1);
 				--i;
 			} else {
 				swap(keys[p],keys.back());
@@ -86,16 +92,16 @@ main()
 #ifdef READD_BEFORE
 		// add records back before the rebuild
 		for(int i=0; i<SIZE/5; i++) {
-			int k = secondset(rng);
-			if (t.insert(k,i)) 
+			int k = testset2(rng);
+			if (t.insert(k,i) != result::FAILURE)
 				keys.push_back(k);
-			else 
+			else
 				--i;
 		}
-		display(t, "readd before rebuild\n");
+		display(t, "readd before rebuild");
 		if (!check(t)) return 1;
 #endif
-		
+
 		// perform a rebuild
 		t.rebuild();
 		display(t, "rebuilt");
@@ -103,13 +109,14 @@ main()
 
 		// add some more records back after the rebuild
 		for(int i=0; i<SIZE/5; i++) {
-			int k = secondset(rng);
+			int k = testset2(rng);
 			result r = t.insert(k,i);
 			switch(r) {
 			case result::SUCCESS: // fall through
 			case result::REBUILD: keys[i]=k; break;
 			case result::DUPLICATE: --i; break;
-			case result::FULLTABLE: cerr << "Table full\n"; return 1;
+			case result::FULLTABLE: cerr << "Table full\n";
+			                        return 1;
 			default: break;
 			}
 		}
@@ -124,19 +131,19 @@ main()
 				cout << "Lost key " << keys[i] << "\n";
 			}
 		}
-		
+
 		// random query test
 		for(int i=0; i<20000; i++) {
 			uniform_int_distribution<> pick(0,keys.size()-1);
 			int p = pick(rng);
 			int x;
-			t.query(keys[p], &x); 
+			t.query(keys[p], &x);
 		}
-		
+
 		display(t, "final");
 		cout << "\n\n";
 		if (!check(t)) return 1;
-		
+
 #ifdef INFINITE
 	}
 #endif

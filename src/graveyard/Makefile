@@ -3,7 +3,7 @@ CC=g++ -std=c++2a
 CFLAGS=-O2 -Wall
 INC = -I. -I../tools
 
-TABLETYPES = graveyard ordered
+TABLETYPES = graveyard ordered linear
 benches = tabletest querystats queuestats xtester rebuildstats \
 	  floatstats loadbench 
 

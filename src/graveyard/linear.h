@@ -1,5 +1,5 @@
-#ifndef GRAVEYARD_H
-#define GRAVEYARD_H
+#ifndef LINEAR_H
+#define LINEAR_H
 
 #include <cstdint>
 #include <string>
@@ -7,36 +7,32 @@
 #include <vector>
 #include <map>
 
-template <typename K = int, typename V = int>
-class graveyard_aos {
+template <typename K = int,
+          typename V = int>
+class linear_aos {
 	private:
 		enum slot_state { FULL, EMPTY, TOMB };
 		enum optype { INSERT, QUERY, REMOVE, REBUILD_INS };
 
-		struct record { 
-			K key; 
+		struct record {
+			K key;
 			V value;
-			slot_state state;		
+			slot_state state;
 		} *table;
 
 		std::size_t buckets;
 		std::size_t records;
 		std::size_t tombs;
-		uint64_t table_head;
 		int rebuild_window;
-		
+
 		int prime_index;
 		double max_load_factor;
 
 		uint64_t search_count;
 		double miss_running_avg;
 
-		uint64_t hash(int k) const;
-		bool probe(K k, uint64_t *slot, optype operation,
-		           bool* wrapped = NULL);
-		uint64_t shift(uint64_t slot);
-		int rebuild_seek(uint64_t x, uint64_t &end);
-		uint64_t rebuild_shift(uint64_t slot);
+		uint64_t hash(K k) const;
+		bool probe(K k, uint64_t *slot, optype operation);
 
 		void reset_rebuild_window();
 		void update_misses(uint64_t misses, enum optype op);
@@ -73,13 +69,13 @@ class graveyard_aos {
 	public:
 		enum result { SUCCESS, FAILURE, REBUILD, DUPLICATE, FULLTABLE };
 
-		graveyard_aos(std::size_t b);
-		~graveyard_aos();
-		std::string table_type() { return "graveyard_aos"; }
+		linear_aos(std::size_t b);
+		~linear_aos();
+		std::string table_type() { return "linear_aos"; }
 
 		void resize(std::size_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }
-		
+
 		result insert(K key, V value, bool rebuilding = false);
 		bool query(K key, V *value);
 		result remove(K key);
@@ -90,32 +86,31 @@ class graveyard_aos {
 		uint64_t inserts, queries, removes;
 		uint64_t insert_misses, query_misses, remove_misses;
 		uint64_t rebuild_inserts, rebuild_insert_misses;
-		uint64_t insert_shifts;
-		uint64_t failed_inserts, failed_queries, failed_removes, duplicates;
+		uint64_t failed_inserts, failed_queries, failed_removes;
+		uint64_t duplicates;
 		uint64_t resizes;
 		uint64_t longest_search;
 		uint64_t rebuilds;
-		int max_rebuild_queue;
 
 		void reset_perf_counts();
 		void report_testing_stats(std::ostream &os = std::cout,
 				bool verbose = true);
 
-		// return cluster length data, with clusters bounded either by
-		// empty slots or by tombstones 
-		void cluster_len(std::map<int, int>*) const;
-		void shift_distance(std::map<int, int>*) const;
 
-		int get_rebuild_window() { return rebuild_window; }
+		void cluster_len(std::map<int,int> *clust) const;
+		void shift_distance(std::map<int,int> *disp) const;
+
 		double load_factor() { return (double)records/buckets; }
 		double avg_misses() { return miss_running_avg; }
 		std::size_t table_size() { return buckets; }
-		std::size_t table_size_bytes() { return buckets*sizeof(record); }
+		std::size_t table_size_bytes() {
+			return buckets*sizeof(record);
+		}
 		std::size_t num_records() { return records; }
 
 		// debugging
 		void dump();
 		bool disable_rebuilds;
-		bool check_ordering();
+		bool check_ordering() { return true; }
 };
 #endif

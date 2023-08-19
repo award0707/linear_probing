@@ -7,18 +7,15 @@
 #include <vector>
 #include <map>
 
-
+template <typename K = int, typename V = int>
 class ordered_aos {
 	private:
-		typedef int key_t;
-		typedef int value_t;
-
 		enum slot_state { FULL, EMPTY, TOMB };
 		enum optype { INSERT, QUERY, REMOVE, REBUILD_INS };
 
 		struct record {
-			key_t key;
-			value_t value;
+			K key;
+			V value;
 			slot_state state;
 		} *table;
 
@@ -34,28 +31,28 @@ class ordered_aos {
 		uint64_t search_count;
 		double miss_running_avg;
 
-		uint64_t hash(int64_t k) const;
-		bool probe(int k, uint64_t *slot, optype operation,
+		uint64_t hash(K k) const;
+		bool probe(K k, uint64_t *slot, optype operation,
 		           bool* wrapped = NULL);
 		uint64_t shift(uint64_t slot);
 
 		void reset_rebuild_window();
 		void update_misses(uint64_t misses, enum optype op);
 
-		inline void setkey(uint64_t k, key_t x)
-			{ table[k].key = x; }
-		inline void setvalue(uint64_t k, value_t v)
-			{ table[k].value = v; }
-
 		inline slot_state state(uint64_t k) const {
 			return table[k].state;
 		}
-		inline key_t& key(uint64_t k) const {
+		inline K& key(uint64_t k) const {
 			return table[k].key;
 		}
-		inline value_t& value(uint64_t k) const {
+		inline V& value(uint64_t k) const {
 			return table[k].value;
 		}
+
+		inline void setkey(uint64_t k, K x)
+			{ table[k].key = x; }
+		inline void setvalue(uint64_t k, V v)
+			{ table[k].value = v; }
 
 		inline void setfull(uint64_t k) { table[k].state = FULL; }
 		inline void setempty(uint64_t k) { table[k].state = EMPTY; }
@@ -81,9 +78,9 @@ class ordered_aos {
 		void resize(uint64_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }
 		
-		result insert(int key, int value, bool rebuilding = false);
-		bool query(int key, int *value);
-		result remove(int key);
+		result insert(K key, V value, bool rebuilding = false);
+		bool query(K key, V *value);
+		result remove(K key);
 		void rebuild();
 
 		// Performance characteristics

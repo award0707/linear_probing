@@ -19,8 +19,7 @@
 pcg_extras::seed_seq_from<std::random_device> seed_source;
 pcg64 rng(seed_source);
 
-using graveyard = graveyard_aos<int,int>;
-using hashtable = ordered_aos;
+using hashtable = graveyard_aos<int,int>;
 
 using std::chrono::duration;
 using std::chrono::steady_clock;
@@ -70,7 +69,7 @@ void loadtable(hashtable *ht, std::vector<int> *keys, double lf)
 	cout << "\r[done]     \n";
 }
 
-void querying(ordered_aos *ht, const std::vector<int> &keys, int nq, int f_pct)
+void querying(hashtable *ht, const std::vector<int> &keys, int nq, int f_pct)
 {
 	int k, v;
 	uint64_t fails = 0;
@@ -92,58 +91,13 @@ void querying(ordered_aos *ht, const std::vector<int> &keys, int nq, int f_pct)
 		cout << "[True %" << (double)fails/nq*100.0 << "] ";
 }
 
-void querying(graveyard *ht, const std::vector<int> &keys, int nq, int f_pct)
-{
-	int k, v;
-	uint64_t fails = 0;
-
-	uniform_int_distribution<size_t> p(0,keys.size()-1);
-	uniform_int_distribution<uint64_t> data(0,KEY_MAX);
-	uniform_int_distribution<int> fail(0,99);
-	
-	for (int i = 0; i < nq; ++i) {
-		if (fail(rng) >= f_pct)
-			k = keys[p(rng)];
-		else
-			k = data(rng);
-
-		if (!ht->query(k, &v)) ++fails;
-	}
-
-	if ((double)fails/nq*100.0 > f_pct)
-		cout << "[True %" << (double)fails/nq*100.0 << "] ";
-}
-
-void querytimer(ordered_aos *ht, const std::vector<int> &keys,
+void querytimer(hashtable *ht, const std::vector<int> &keys,
                 std::vector<duration<double> > *d,
                 int nq, int f_pct)
 {
 	time_point<steady_clock> start, end;
 	ht->reset_perf_counts();
 
-	cout << "Query timing some other hash table: ";
-	for (int i=0; i<NTESTS; ++i) {
-		cout << i+1 << std::flush;
-		start = steady_clock::now();
-		querying(ht, keys, nq, f_pct);
-		end = steady_clock::now();
-
-		cout << "... ";
-
-		d->push_back(end - start);
-		ht->reset_perf_counts();
-	}
-	cout << std::endl;
-}
-
-void querytimer(graveyard *ht, const std::vector<int> &keys,
-                std::vector<duration<double> > *d,
-                int nq, int f_pct)
-{
-	time_point<steady_clock> start, end;
-	ht->reset_perf_counts();
-
-	cout << "Query timing a graveyard_aos hash table: ";
 	for (int i=0; i<NTESTS; ++i) {
 		cout << i+1 << std::flush;
 		start = steady_clock::now();
@@ -288,7 +242,8 @@ int main(int argc, char **argv)
 	}
 
 	cout << "\n------------------------------------------------------\n";
-	cout << "Queries/trial, Fail%, Trial times, Mean, Median, Loadfactor, x, n\n";
+	cout << "Queries/trial, Fail%, Trial times, "
+	        "Mean, Median, Loadfactor, x, n\n";
 	dump_query_stats(querystats);
 
 	return 0;

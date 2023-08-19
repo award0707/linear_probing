@@ -4,16 +4,19 @@
 #include "ordered.h"
 #include "primes.h"
 
-ordered_aos::ordered_aos(uint64_t b)
+template class ordered_aos<>;
+
+template<typename K, typename V>
+ordered_aos<K, V>::ordered_aos(uint64_t b)
 {
 	prime_index = 0;
-	while(b > primes[prime_index]) 
+	while(b > primes[prime_index])
 		prime_index++;
-	
+
 	table = new record[b];
 	if (!table) std::cerr << "Couldn't allocate\n";
-	
-	for(uint64_t i=0; i<b; i++) 
+
+	for(uint64_t i=0; i<b; i++)
 		table[i].state = EMPTY;
 
 	max_load_factor = 0.5;
@@ -30,29 +33,34 @@ ordered_aos::ordered_aos(uint64_t b)
 
 	reset_perf_counts();
 	reset_rebuild_window();
-}	
+}
 
-ordered_aos::~ordered_aos()
+template<typename K, typename V>
+ordered_aos<K, V>::~ordered_aos()
 {
 	delete[] table;
 }
 
-uint64_t ordered_aos::hash(int64_t k) const
+template<typename K, typename V>
+uint64_t
+ordered_aos<K, V>::hash(K k) const
 {
 	int64_t r = k % buckets;
 	return (r<0) ? r+buckets : r;
 }
 
-void ordered_aos::resize(uint64_t b)
+template<typename K, typename V>
+void
+ordered_aos<K, V>::resize(uint64_t b)
 {
 	uint64_t oldbuckets = buckets;
 	record *oldtable = table;
 
 	std::cerr << "resize(): rehashing into " << b << " buckets\n";
-	
+
 	table = new record[b];
-	if (!table) std::cerr << "couldn't allocate for resize\n"; 
-	for(uint64_t i=0; i<b; ++i) 
+	if (!table) std::cerr << "couldn't allocate for resize\n";
+	for(uint64_t i=0; i<b; ++i)
 		table[i].state = EMPTY;
 	records = 0;
 	tombs = 0;
@@ -64,10 +72,12 @@ void ordered_aos::resize(uint64_t b)
 	}
 
 	delete[] oldtable;
-	resizes++;	
+	resizes++;
 }
 
-bool ordered_aos::probe(int k, uint64_t *slot, optype operation, bool* wrapped)
+template<typename K, typename V>
+bool
+ordered_aos<K, V>::probe(K k, uint64_t *slot, optype operation, bool* wrapped)
 {
 	const uint64_t h = hash(k);
 	uint64_t miss = 1;
@@ -114,12 +124,14 @@ bool ordered_aos::probe(int k, uint64_t *slot, optype operation, bool* wrapped)
 }
 
 // find the end of the cluster, then slide records 1 to the right
-uint64_t ordered_aos::shift(uint64_t start)
+template<typename K, typename V>
+uint64_t
+ordered_aos<K, V>::shift(uint64_t start)
 {
 	using std::memmove;
 	const uint64_t last = buckets-1;
 	uint64_t end = start;
-	
+
 	do
 		if (++end > last) end = 0;
 	while (full(end));
@@ -138,7 +150,9 @@ uint64_t ordered_aos::shift(uint64_t start)
 	return end;
 }
 
-ordered_aos::result ordered_aos::insert(int k, int v, bool rebuilding) 
+template<typename K, typename V>
+ordered_aos<K, V>::result
+ordered_aos<K, V>::insert(K k, V v, bool rebuilding)
 {
 	uint64_t slot;
 	bool wrapped=false;
@@ -166,7 +180,7 @@ ordered_aos::result ordered_aos::insert(int k, int v, bool rebuilding)
 		}
 	} else if (wrapped && slot == table_head)
 		table_head++;
-	
+
 	setkey(slot, k);
 	setvalue(slot, v);
 	setfull(slot);
@@ -175,12 +189,12 @@ ordered_aos::result ordered_aos::insert(int k, int v, bool rebuilding)
 	rebuilding ? rebuild_inserts++ : inserts++;
 
 	// automatic resizing
-	if (load_factor() > max_load_factor) { 
+	if (load_factor() > max_load_factor) {
 		std::cerr << "load factor " << max_load_factor << " exceeded\n";
 		resize(primes[++prime_index]);
 	}
 
-	if (!rebuilding) { 
+	if (!rebuilding) {
 		--rebuild_window;
 		if (rebuild_window <= 0) return result::REBUILD;
 	}
@@ -188,8 +202,9 @@ ordered_aos::result ordered_aos::insert(int k, int v, bool rebuilding)
 	return result::SUCCESS;
 }
 
-bool 
-ordered_aos::query(int k, int *v) 
+template<typename K, typename V>
+bool
+ordered_aos<K, V>::query(K k, V *v)
 {
 	uint64_t slot;
 	++queries;
@@ -198,16 +213,17 @@ ordered_aos::query(int k, int *v)
 		*v = value(slot);
 		return true;
 	}
-	
+
 	++failed_queries;
 	return false;
 }
 
-ordered_aos::result
-ordered_aos::remove(int k)
+template<typename K, typename V>
+ordered_aos<K, V>::result
+ordered_aos<K, V>::remove(K k)
 {
 	uint64_t slot;
-	++removes;	
+	++removes;
 
 	if (probe(k, &slot, REMOVE)) {
 		settomb(slot);
@@ -220,18 +236,20 @@ ordered_aos::remove(int k)
 	return result::FAILURE;
 }
 
+template<typename K, typename V>
 void
-ordered_aos::reset_rebuild_window()
+ordered_aos<K, V>::reset_rebuild_window()
 {
 	rebuild_window = buckets/2 * (1.0 - load_factor());
 }
 
+template<typename K, typename V>
 void
-ordered_aos::rebuild()
+ordered_aos<K, V>::rebuild()
 {
 	std::vector<record> overflow;
 
-	// temporarily save the table overflow 
+	// temporarily save the table overflow
 	for(uint64_t p = 0; p < table_head; ++p) {
 		if (full(p)) {
 			overflow.push_back(table[p]);
@@ -263,10 +281,12 @@ ordered_aos::rebuild()
 	for (record r : overflow) insert(r.key, r.value, true);
 
 	++rebuilds;
-	reset_rebuild_window();	
+	reset_rebuild_window();
 }
 
-void ordered_aos::update_misses(uint64_t misses, enum optype op)
+template<typename K, typename V>
+void
+ordered_aos<K, V>::update_misses(uint64_t misses, enum optype op)
 {
 	int n = ++search_count;
 	total_misses += misses;
@@ -286,7 +306,9 @@ void ordered_aos::update_misses(uint64_t misses, enum optype op)
 		miss_running_avg * (double)(n-1)/n + (double)misses/n;
 }
 
-void ordered_aos::reset_perf_counts()
+template<typename K, typename V>
+void
+ordered_aos<K, V>::reset_perf_counts()
 {
 	inserts = queries = removes = rebuild_inserts = 0;
 	insert_misses = query_misses = remove_misses = 0;
@@ -300,7 +322,9 @@ void ordered_aos::reset_perf_counts()
 	resizes = 0;
 }
 
-void ordered_aos::report_testing_stats(std::ostream &os, bool verbose)
+template<typename K, typename V>
+void
+ordered_aos<K, V>::report_testing_stats(std::ostream &os, bool verbose)
 {
 	if (verbose) {
 		os << "Misses\n";
@@ -309,13 +333,13 @@ void ordered_aos::report_testing_stats(std::ostream &os, bool verbose)
 			os << ", " << (double)insert_misses/inserts
 				<< " miss/insert";
 		os << "\n";
-		
+
 		os << "Query: " << query_misses;
 		if (queries)
 			os << ", " << (double)query_misses/queries
 				<< " miss/query";
 		os << "\n";
-		
+
 		os << "Remove: " << remove_misses;
 		if (removes)
 			os << ", " << (double)remove_misses/removes
@@ -330,7 +354,7 @@ void ordered_aos::report_testing_stats(std::ostream &os, bool verbose)
 			<< " (" << duplicates << " dup) / " << inserts
 			<< ", Queries: " << failed_queries << " / " << queries
 			<< ", Removes: " << failed_removes << " / " << removes
-			<< "\n";	
+			<< "\n";
 	} else {
 		os << insert_misses << ","
 			<< (inserts ? (double)insert_misses/inserts : 0) << ","
@@ -345,9 +369,11 @@ void ordered_aos::report_testing_stats(std::ostream &os, bool verbose)
 }
 
 // fill in a histogram of cluster lengths (tombstones count as boundaries)
-void ordered_aos::cluster_len(std::map<int,int> *clust) const
+template<typename K, typename V>
+void
+ordered_aos<K, V>::cluster_len(std::map<int,int> *clust) const
 {
-	uint64_t last_empty, last_tomb; 
+	uint64_t last_empty, last_tomb;
 	last_empty = last_tomb = table_head;
 	for(uint64_t p = table_head; p < buckets; ++p) {
 		if (!full(p)) {
@@ -376,7 +402,9 @@ void ordered_aos::cluster_len(std::map<int,int> *clust) const
 
 // fill in a histogram of shift lengths
 // i.e. the distance from a key's slot and the hash of that key
-void ordered_aos::shift_distance(std::map<int,int> *disp) const
+template<typename K, typename V>
+void
+ordered_aos<K, V>::shift_distance(std::map<int,int> *disp) const
 {
 	for(uint64_t p = 0; p < buckets; ++p) {
 		if (full(p)) {
@@ -389,7 +417,9 @@ void ordered_aos::shift_distance(std::map<int,int> *disp) const
 }
 
 // ensure keys are monotonically increasing
-bool ordered_aos::check_ordering()
+template<typename K, typename V>
+bool
+ordered_aos<K, V>::check_ordering()
 {
 	uint64_t p = table_head, q;
 	bool wrapped = false;
@@ -398,7 +428,7 @@ bool ordered_aos::check_ordering()
 	q = p;
 	while(1) {
 		while (table[++q].state != FULL)
-			if (q == buckets) { 
+			if (q == buckets) {
 				q = 0;
 				wrapped = true;
 			}
@@ -416,7 +446,9 @@ bool ordered_aos::check_ordering()
 	return true;
 }
 
-void ordered_aos::dump()
+template<typename K, typename V>
+void
+ordered_aos<K, V>::dump()
 {
 	for(size_t i=0; i<buckets; i++) {
 		if ((i!=0) && (i%10 == 0)) std::cout << "\n";
@@ -428,7 +460,7 @@ void ordered_aos::dump()
 			std::cout << "\033[0;22m*\033[0m[";
 		else
 			std::cout << " [";
-		
+
 		if(full(i)) {
 			std::cout.width(4);
 			std::cout << hash(key(i)) << "]";

@@ -55,7 +55,7 @@ linear_aos<K, V>::resize(uint64_t b)
 	uint64_t oldbuckets = buckets;
 	record *oldtable = table;
 
-	cerr << "resize(): rehashing into " << b << " buckets\n";
+	//cerr << "resize(): rehashing into " << b << " buckets\n";
 
 	table = new record[b];
 	if (!table) {
@@ -148,7 +148,7 @@ linear_aos<K, V>::insert(K k, V v, bool rebuilding)
 
 	if (!rebuilding) {
 		--rebuild_window;
-		if (rebuild_window <= 0 && !disable_rebuilds) return REBUILD;
+		if (rebuild_window <= 0) return REBUILD;
 	}
 
 	return SUCCESS;
@@ -199,6 +199,7 @@ void
 linear_aos<K, V>::rebuild()
 {
 	resize(buckets);
+	reset_rebuild_window();
 }
 
 template <typename K, typename V>

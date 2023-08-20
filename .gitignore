@@ -3,5 +3,11 @@
 *.out
 *.swp
 *.csv
-src/tabletest
-src/bench
+tabletest
+loadbench
+rebuildstats
+querystats
+floatstats
+queuestats
+xtester
+

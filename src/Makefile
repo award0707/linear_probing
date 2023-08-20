@@ -1,15 +1,16 @@
 CC=g++ -std=c++2a
 #CFLAGS=-ggdb -O0
 CFLAGS=-O2 -Wall
-INC = -I. -I../tools
+INC = -I. -Itesters -I tables -Itools
 
-TABLETYPES = graveyard ordered linear
+tabletypes = graveyard ordered linear
+testers = querytester
 benches = tabletest querystats queuestats xtester rebuildstats \
 	  floatstats loadbench 
 
-DEPS = $(wildcard ../tools/primes.*) $(wildcard *.h)
-SRC = $(TABLETYPES:=.cc)
-OBJ = $(TABLETYPES:%=obj/%.o) obj/primes.o
+DEPS = $(wildcard ../tools/primes.*) $(wildcard *.h) $(testers:=.hpp)
+SRC = $(tabletypes:=.cc) 
+OBJ = $(tabletypes:%=obj/%.o) obj/primes.o
 
 all: tests
 

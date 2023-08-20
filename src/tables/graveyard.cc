@@ -79,8 +79,7 @@ graveyard_aos<K, V>::resize(uint64_t b)
 
 template<typename K, typename V>
 bool
-graveyard_aos<K, V>::probe(K k, uint64_t *slot,
-		                optype operation, bool* wrapped)
+graveyard_aos<K, V>::probe(K k, uint64_t *slot, optype operation, bool* wrapped)
 {
 	const uint64_t h = hash(k);
 	uint64_t miss = 1;
@@ -287,7 +286,6 @@ graveyard_aos<K, V>::remove(K k)
 		++tombs;
 		--records;
 		--rebuild_window;
-		cerr << " i been a failur\n";
 		if(rebuild_window > 0) 
 			return result::SUCCESS;
 		else 

@@ -12,15 +12,19 @@
 #include "pcg_random.hpp"
 #include "primes.h"
 #include "graveyard.h"
+#include "ordered.h"
+#include "linear.h"
 
 #define KEY_MAX 2000000000L
+//using hashtable = linear_aos<>;
+using hashtable = graveyard_aos<>;
+//using hashtable = ordered_aos<>;
 
 /* exhaustively test all keys and values inserted */
-#define VERIFY
+//#define VERIFY
 
 using std::chrono::steady_clock;
 using std::chrono::time_point;
-using hashtable = graveyard_aos;
 
 pcg_extras::seed_seq_from<std::random_device> seed_source;
 pcg32 rng(seed_source);
@@ -54,7 +58,7 @@ struct params_t {
 
 
 // for readable comma-separated prints in verbose mode
-class comma_numpunct : public std::numpunct<char> { 
+class comma_numpunct : public std::numpunct<char> {
 	protected:
 		virtual char do_thousands_sep() const { return ','; }
 		virtual std::string do_grouping() const { return "\03"; }
@@ -97,7 +101,7 @@ void dump_timing_data(stats_t &stats, std::ostream &o = std::cout)
 		  << setw(w) << std::setprecision(4) << (double)ins_m / ins
 		  << setw(w) << stats.longest_search[i]
 		  << setw(w) << std::setprecision(4) << (double)ins_s / ins
-		  << "\n"; 
+		  << "\n";
 	}
 
 	t = stats.wct.back() - stats.wct.front();
@@ -127,9 +131,9 @@ void shift_distance(const hashtable &ht, std::ostream &o)
 	std::map<int,int> m;
 	ht.shift_distance(&m);
 	// [shift distance]:[cardinality]
-	for (auto pair : m)  
+	for (auto pair : m)
 		o << pair.first << ':' << pair.second << ", ";
-	
+
 }
 
 void dump_cluster_len(std::vector<int> &h, std::ostream &o)
@@ -156,7 +160,7 @@ void verbose_stats(hashtable *ht)
 	std::cout << "Buckets: " << ht->table_size() << "\n";
 	std::cout << "Records: " << ht->num_records() << "\n";
 	std::cout << "Load factor: " << ht->load_factor() << "\n";
-	
+
 	std::cout << "------ Search statistics ------\n";
 	std::cout << "Total misses: " << ht->total_misses << "\n";
 	std::cout << "Avg. miss/op: " << ht->avg_misses() << "\n";
@@ -179,20 +183,22 @@ void display_stats(stats_t &stats, bool verbose, std::ostream &o = std::cout)
 	} else {
 		int w=16;
 		o << std::left
-			<< setw(w) << "size"
-			<< setw(w) << "records"
-			<< setw(w) << "lf"
-			<< setw(w) << "misses"
-			<< setw(w) << "avg misses"
-			<< setw(w) << "longest"
-			<< setw(w) << "shifts" << '\n';
-		o << setw(w) << stats.ht->table_size() 
-			<< setw(w) << stats.ht->num_records()
-			<< setw(w) << stats.ht->load_factor()
-			<< setw(w) << stats.ht->total_misses
-			<< setw(w) << stats.ht->avg_misses()
-			<< setw(w) << stats.ht->longest_search
-			<< setw(w) << stats.ht->insert_shifts << '\n';
+		  << setw(w) << "type"
+		  << setw(w) << "size"
+		  << setw(w) << "records"
+		  << setw(w) << "lf"
+		  << setw(w) << "misses"
+		  << setw(w) << "avg misses"
+		  << setw(w) << "longest"
+		  << setw(w) << "shifts" << '\n';
+		o << setw(w) << stats.ht->table_type()
+		  << setw(w) << stats.ht->table_size()
+		  << setw(w) << stats.ht->num_records()
+		  << setw(w) << stats.ht->load_factor()
+		  << setw(w) << stats.ht->total_misses
+		  << setw(w) << stats.ht->avg_misses()
+		  << setw(w) << stats.ht->longest_search
+		  << setw(w) << stats.ht->insert_shifts << '\n';
 	}
 	o << '\n';
 }
@@ -213,12 +219,12 @@ setup_test_params(int argc, char **argv, params_t *p)
 
 	int c;
 	while ((c = getopt(argc, argv, "b:l:n:i:rvTCSW")) != -1) {
-		switch(c) 
+		switch(c)
 		{
 		case 'b':
 			p->table_size = std::stoi(optarg)*1000000;
 			break;
-		case 'l':		
+		case 'l':
 			p->load_factor = std::stod(optarg);
 			if (!(p->load_factor > 0 && p->load_factor < 1)) {
 				std::cout << "Load factor invalid\n";
@@ -330,7 +336,7 @@ int main(int argc, char **argv)
 			keys.push_back(k);
 		if (r == result::REBUILD && p.loadrebuild)
 			ht->rebuild();
-		
+
 		loadstats.opcount++;
 
 		if (--stat_timer == 0) {
@@ -380,7 +386,7 @@ int main(int argc, char **argv)
 
 		f.close();
 	}
-	
+
 
 	delete ht;
 	return 0;

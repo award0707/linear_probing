@@ -12,7 +12,7 @@
 #define READD_BEFORE	/* do a readd test before rebuilding */
 
 using namespace std;
-using hashtable = ordered_aos<int, int>;
+using hashtable = graveyard_aos<int, int>;
 using result = hashtable::result;
 
 bool check(hashtable &h)

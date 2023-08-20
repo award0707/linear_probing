@@ -11,14 +11,16 @@
 #include "pcg_random.hpp"
 #include "primes.h"
 #include "graveyard.h"
+#include "ordered.h"
+#include "linear.h"
 
 #define KEY_MAX 2000000000L
-#define NTESTS 10
+#define NTESTS 1
 
 pcg_extras::seed_seq_from<std::random_device> seed_source;
 pcg64 rng(seed_source);
 
-using hashtable = graveyard_aos;
+using hashtable = graveyard_aos<int,int>;
 
 using std::chrono::duration;
 using std::chrono::steady_clock;
@@ -54,6 +56,8 @@ void loadtable(hashtable *ht, std::vector<int> *keys, double lf)
 		result r = ht->insert(k, k/2);
 		if (r == result::SUCCESS || r == result::REBUILD)
 			keys->push_back(k);
+		if (r == result::REBUILD)
+			ht->rebuild();
 
 		if (--stat_timer == 0) {
 			stat_timer = interval;
@@ -64,6 +68,23 @@ void loadtable(hashtable *ht, std::vector<int> *keys, double lf)
 	}
 
 	cout << "\r[done]     \n";
+}
+
+inline void
+rebuild_action(linear_aos<> *ht, hashtable::result r)
+{
+}
+
+inline void
+rebuild_action(ordered_aos<> *ht, hashtable::result r)
+{
+	if (r == hashtable::result::REBUILD) ht->rebuild();
+}
+
+inline void
+rebuild_action(graveyard_aos<> *ht, hashtable::result r)
+{
+	if (r == hashtable::result::REBUILD) ht->rebuild();
 }
 
 void floating(hashtable *ht, std::vector<int> *keys, int nops)
@@ -99,7 +120,8 @@ void floating(hashtable *ht, std::vector<int> *keys, int nops)
 			++del;
 		}
 
-		if (r == res::REBUILD) ht->rebuild();
+		rebuild_action(ht, r);
+		if (!(nops % 10'000)) std::cerr << "\rnops = " << nops << std::flush;
 	} while (--nops);
 	cout << "+"<<ins<<",-"<<del<<" : " << ht->table_size() - ht->num_records() << " free\n";
 }
@@ -109,13 +131,13 @@ void float_timer(hashtable *ht, std::vector<int> *keys,
 {
 	time_point<steady_clock> start, end;
 
-	cout << "Floating op timing " << nops << "ops: ";
+	cout << "Floating op timing: ";
 	for (int i=0; i<NTESTS; ++i) {
 		cout << "...set up... ";
 		ht->rebuild();
 		ht->reset_perf_counts();
 
-		cout << i+1 << std::flush;
+		cout << i+1 << ", rbw=" << ht->get_rebuild_window() << " ";
 
 		start = steady_clock::now();
 		floating(ht, keys, nops);
@@ -176,16 +198,16 @@ int main(int argc, char **argv)
 {
 	vector<float_stats_t> stats;
 
-	const vector<int> xs{2,3,4,5,6,7,8,9,10,15,20,25,
+	const vector<int> xs{5,6,7,8,9,10,15,20,25,
 	               30,40,50,60,70,80,90,100,200,400,700,1000};
-	const vector<uint64_t> bs { 1'000'000, 5'000'000,
-	                            10'000'000, 50'000'000, 100'000'000,
-	                            500'000'000, 1'000'000'000 };
+	const vector<uint64_t> bs { //10'000'000, 50'000'000, 100'000'000,
+	                            //250'000'000, 500'000'000 };
+	                            750'000'000, 1'000'000'000 };
 	
 	for (auto b : bs) {
-		hashtable ht(b);
+		hashtable ht(next_prime(b));
 		vector<int> keys;
-		int nops = 10000;
+	        int nops = 10'000'000;
 
 		uint64_t size = ht.table_size();
 		ht.set_max_load_factor(1.0);

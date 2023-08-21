@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <vector>
 #include <random>
+#include <cassert>
 
 #include "graveyard.h"
 #include "ordered.h"
@@ -11,17 +12,16 @@
 #define INFINITE	/* test in an infinite loop, breaking only on error */
 #define READD_BEFORE	/* do a readd test before rebuilding */
 
-using namespace std;
-using hashtable = graveyard_aos<int, int>;
+using hashtable = ordered_aos<int, int>;
 using result = hashtable::result;
 
 bool check(hashtable &h)
 {
 	if (!h.check_ordering()) {
-		cout << "Elements lost ordering" << endl;
+		std::cout << "Elements lost ordering" << std::endl;
 		return false;
 	} else if (h.failed_queries > 0) {
-		cout << "Some data got lost" << endl;
+		std::cout << "Some data got lost" << std::endl;
 		return false;
 	}
 
@@ -31,16 +31,17 @@ bool check(hashtable &h)
 void
 display(hashtable &h, const char *message)
 {
-	cout << "\n" << message << "\n---------\n";
+	std::cout << "\n" << message << "\n---------\n";
 	h.dump();
-	cout << "\nrecords: " << h.num_records() << "/" << h.table_size();
-	cout << "\n\n";
+	std::cout << "\nrecords: " << h.num_records() << "/" << h.table_size();
+	std::cout << "\n\n";
 }
 
 int
 main()
 {
-	random_device dev;
+	using std::uniform_int_distribution, std::mt19937;
+	std::random_device dev;
 	mt19937 rng(dev());
 	uniform_int_distribution<mt19937::result_type> testset(0,9999-SIZE);
 	uniform_int_distribution<mt19937::result_type> testset2(9999-SIZE,9999);
@@ -50,21 +51,21 @@ main()
 	while (1) {
 #endif
 		hashtable t(SIZE);
-		vector<int> keys(SIZE,0);
+		std::vector<int> keys(SIZE,0);
 
 		t.disable_rebuilds = true;
-		cout << t.table_type() << ": start run #" << ++run << "\n";
+		std::cout << t.table_type() << ": start run #" << ++run << "\n";
 
 		// fill up the table completely
 		t.set_max_load_factor(1.0);
 		for(int i=0; i<SIZE; i++) {
 			int k = testset(rng);
-			result r = t.insert(k,i);
+			result r = t.insert(k,k*2);
 			switch(r) {
 			case result::SUCCESS: // fall through
 			case result::REBUILD: keys[i]=k; break;
 			case result::DUPLICATE: --i; break;
-			case result::FULLTABLE: cerr << "Table full\n";
+			case result::FULLTABLE: std::cerr << "Table full\n";
 			                        return 1;
 			default: break;
 			}
@@ -78,12 +79,12 @@ main()
 			int p = pick(rng);
 			result r = t.remove(keys[p]);
 			if(r == result::FAILURE) {
-				cout << "failed remove [" << p << "]:"
+				std::cout << "failed remove [" << p << "]:"
 				     << keys[p] << "!\n";
 				exit(1);
 				--i;
 			} else {
-				swap(keys[p],keys.back());
+				std::swap(keys[p],keys.back());
 				keys.pop_back();
 			}
 		}
@@ -93,7 +94,7 @@ main()
 		// add records back before the rebuild
 		for(int i=0; i<SIZE/5; i++) {
 			int k = testset2(rng);
-			if (t.insert(k,i) != result::FAILURE)
+			if (t.insert(k,k*2) != result::FAILURE)
 				keys.push_back(k);
 			else
 				--i;
@@ -110,12 +111,12 @@ main()
 		// add some more records back after the rebuild
 		for(int i=0; i<SIZE/5; i++) {
 			int k = testset2(rng);
-			result r = t.insert(k,i);
+			result r = t.insert(k,k*2);
 			switch(r) {
 			case result::SUCCESS: // fall through
 			case result::REBUILD: keys[i]=k; break;
 			case result::DUPLICATE: --i; break;
-			case result::FULLTABLE: cerr << "Table full\n";
+			case result::FULLTABLE: std::cerr << "Table full\n";
 			                        return 1;
 			default: break;
 			}
@@ -128,7 +129,7 @@ main()
 		for (size_t i=0; i<keys.size(); i++) {
 			int x;
 			if (!t.query(keys[i],&x)) {
-				cout << "Lost key " << keys[i] << "\n";
+				std::cout << "Lost key " << keys[i] << "\n";
 			}
 		}
 
@@ -138,10 +139,11 @@ main()
 			int p = pick(rng);
 			int x;
 			t.query(keys[p], &x);
+			assert(x == keys[p] * 2);
 		}
 
 		display(t, "final");
-		cout << "\n\n";
+		std::cout << "\n\n";
 		if (!check(t)) return 1;
 
 #ifdef INFINITE

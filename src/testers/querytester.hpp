@@ -22,10 +22,6 @@ using std::chrono::time_point;
 using std::uniform_int_distribution;
 using std::cout, std::vector;
 
-double mean(std::vector<duration<double> >);
-double median(std::vector<duration<double> >);
-std::ostream& operator<<(std::ostream&, const std::vector<duration<double> >&);
-
 template <typename hashtable>
 class querytester {
 	private:
@@ -102,8 +98,8 @@ class querytester {
 			if (!ht->query(k, &v)) ++fails;
 		}
 
-		if ((double)fails/nq*100.0 > f_pct)
-			cout << "[True %" << (double)fails/nq*100.0 << "] ";
+		if (f_pct == 0)
+			assert (fails == 0);
 	}
 
 	void querytimer(hashtable *ht, const std::vector<int> &keys,
@@ -115,6 +111,7 @@ class querytester {
 
 		for (int i=0; i<ntests; ++i) {
 			cout << i+1 << std::flush;
+
 			start = steady_clock::now();
 			querying(ht, keys, nq, f_pct);
 			end = steady_clock::now();
@@ -182,8 +179,6 @@ class querytester {
 			}
 		}
 
-		// failed query test
-		/*
 		{
 			uint64_t b = 10'000'000;
 			int x = 500;
@@ -218,7 +213,6 @@ class querytester {
 				querystats.push_back(q);
 			}
 		}
-		*/
 	}
 
 	public:
@@ -234,41 +228,5 @@ class querytester {
 		return h.dump_query_stats(os);
 	}
 };
-
-double
-mean(std::vector<duration<double> > v)
-{
-	return (std::reduce(v.begin(), v.end()) / v.size()).count();
-}
-
-double
-median(std::vector<duration<double> > dv)
-{
-	double med;
-	vector<double> v;
-
-	for (auto i : dv) v.push_back(i.count());
-	int n = v.size() / 2.0;
-
-	std::nth_element(v.begin(), v.begin() + n, v.end());
-	med = v[n];
-
-	if ((v.size() % 2) == 0) {
-		auto max = std::max_element(v.begin(), v.begin() + n);
-		med = (*max + med) / 2.0;
-	}
-
-	return med;
-}
-
-std::ostream&
-operator<<(std::ostream& os, const std::vector<duration<double> >& v)
-{
-	os << "[";
-	for (auto &i : v) os << " " << i.count();
-	os << "]";
-	return os;
-}
-
 #endif
 

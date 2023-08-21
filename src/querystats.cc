@@ -4,7 +4,7 @@
 #include "primes.h"
 #include "util.h"
 
-#include "querytester.hpp"
+#include "testers/querytester.hpp"
 #include "graveyard.h"
 #include "ordered.h"
 #include "linear.h"
@@ -24,15 +24,24 @@ int main(int argc, char **argv)
 	const vector<int> testx{2,3,4};
 	const vector<uint64_t> testb{100000, 200000};
 
-	const auto &xs = testx;
-	const auto &bs = testb;
+	const auto &xs = fullxs;
+	const auto &bs = fullbs;
 	const int nq = 1'000'000;       // queries per test
-	const int nt = 5;              // number of tests to average over
+	const int nt = 10;              // number of tests to average over
 
-	std::ofstream f("whateverman");
-	f << querytester<graveyard_aos<int, int> >(rng, xs, bs, nq, nt);
+	std::ofstream f("output_querystats");
+//	f << querytester<graveyard_soa<int, int> >(rng, xs, bs, nq, nt);
+//	f << querytester<graveyard_aos<int, int> >(rng, xs, bs, nq, nt);
+//	f << querytester<ordered_aos<int, int> >(rng, xs, bs, nq, nt);
+//	f << querytester<linear_aos<int, int> >(rng, xs, bs, nq, nt);
+//
+
 	f << querytester<ordered_aos<int, int> >(rng, xs, bs, nq, nt);
-	f << querytester<linear_aos<int, int> >(rng, xs, bs, nq, nt);
+	f << std::flush;
+	f << querytester<ordered_soa<int, int> >(rng, xs, bs, nq, nt);
+	f << std::flush;
+	f << querytester<linear_soa<int, int> >(rng, xs, bs, nq, nt);
+	f << std::flush;
 	f.close();
 
 	cout << "Complete\n";

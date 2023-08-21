@@ -1,25 +1,32 @@
 CC=g++ -std=c++2a
 #CFLAGS=-ggdb -O0
 CFLAGS=-O2 -Wall
-INC = -I. -Itesters -I tables -Itools
+INC = -I. -Itesters -Ihashtables -Itools
 
-tabletypes = graveyard ordered linear
+tabletypes = graveyard_aos ordered_aos linear_aos graveyard_soa \
+	     ordered_soa linear_soa
 testers = querytester
 benches = tabletest querystats queuestats xtester rebuildstats \
 	  floatstats loadbench 
 
-DEPS = $(wildcard ../tools/primes.*) $(wildcard *.h) $(testers:=.hpp)
-SRC = $(tabletypes:=.cc) 
-OBJ = $(tabletypes:%=obj/%.o) obj/primes.o
+DEPS = $(wildcard tools/primes.*) $(wildcard tables/*.h) \
+       $(wildcard testers/*.hpp)
+SRC = $(tabletypes:%=tables/%.cc) 
+OBJ = $(tabletypes:%=obj/%.o) obj/primes.o obj/util.o
 
 all: tests
+
+obj/%.o: hashtables/%.cc $(DEPS)
+	mkdir -p obj
+	@echo $@
+	$(CC) -c -o $@ $< $(CFLAGS) $(INC)
 
 obj/%.o: %.cc $(DEPS) 
 	mkdir -p obj
 	@echo $@
 	$(CC) -c -o $@ $< $(CFLAGS) $(INC)
 
-obj/primes.o: ../tools/primes.c
+obj/%.o: tools/%.cc $(DEPS)
 	mkdir -p obj
 	@echo $@
 	$(CC) -c -o $@ $< $(CFLAGS) $(INC)
@@ -34,5 +41,5 @@ test:
 	@echo $(OBJ)
 
 clean :
-	rm obj/* $(benches)
+	rm obj/*.o $(benches)
 

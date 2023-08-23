@@ -71,7 +71,7 @@ class linear_aos {
 
 		linear_aos(std::size_t b);
 		~linear_aos();
-		std::string table_type() { return "linear_aos"; }
+		std::string table_type() const { return "linear_aos"; }
 
 		void resize(std::size_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }
@@ -90,6 +90,7 @@ class linear_aos {
 		uint64_t duplicates;
 		uint64_t resizes;
 		uint64_t longest_search;
+		uint64_t insert_shifts;
 		uint64_t rebuilds;
 
 		void reset_perf_counts();
@@ -100,14 +101,14 @@ class linear_aos {
 		void cluster_len(std::map<int,int> *clust) const;
 		void shift_distance(std::map<int,int> *disp) const;
 
-		int get_rebuild_window() { return rebuild_window; }
-		double load_factor() { return (double)records/buckets; }
-		double avg_misses() { return miss_running_avg; }
-		std::size_t table_size() { return buckets; }
-		std::size_t table_size_bytes() {
+		int get_rebuild_window() const { return rebuild_window; }
+		double load_factor() const { return (double)records/buckets; }
+		double avg_misses() const { return miss_running_avg; }
+		std::size_t table_size() const { return buckets; }
+		std::size_t table_size_bytes() const {
 			return buckets*sizeof(record_t);
 		}
-		std::size_t num_records() { return records; }
+		std::size_t num_records() const { return records; }
 
 		// debugging
 		void dump();
@@ -185,7 +186,7 @@ class linear_soa {
 
 		linear_soa(std::size_t b);
 		~linear_soa();
-		std::string table_type() { return "linear_soa"; }
+		std::string table_type() const { return "linear_soa"; }
 
 		void resize(std::size_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }
@@ -204,6 +205,7 @@ class linear_soa {
 		uint64_t duplicates;
 		uint64_t resizes;
 		uint64_t longest_search;
+		uint64_t insert_shifts;
 		uint64_t rebuilds;
 
 		void reset_perf_counts();
@@ -214,14 +216,14 @@ class linear_soa {
 		void cluster_len(std::map<int,int> *clust) const;
 		void shift_distance(std::map<int,int> *disp) const;
 
-		int get_rebuild_window() { return rebuild_window; }
-		double load_factor() { return (double)records/buckets; }
-		double avg_misses() { return miss_running_avg; }
-		std::size_t table_size() { return buckets; }
-		std::size_t table_size_bytes() {
+		int get_rebuild_window() const { return rebuild_window; }
+		double load_factor() const { return (double)records/buckets; }
+		double avg_misses() const { return miss_running_avg; }
+		std::size_t table_size() const { return buckets; }
+		std::size_t table_size_bytes() const {
 			return buckets*sizeof(record_t);
 		}
-		std::size_t num_records() { return records; }
+		std::size_t num_records() const { return records; }
 
 		// debugging
 		void dump();

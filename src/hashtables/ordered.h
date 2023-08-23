@@ -74,7 +74,7 @@ class ordered_aos {
 
 		ordered_aos(uint64_t b);
 		~ordered_aos();
-		std::string table_type() { return "ordered_aos"; }
+		std::string table_type() const { return "ordered_aos"; }
 
 		void resize(uint64_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }
@@ -192,7 +192,7 @@ class ordered_soa {
 
 		ordered_soa(uint64_t b);
 		~ordered_soa();
-		std::string table_type() { return "ordered_soa"; }
+		std::string table_type() const { return "ordered_soa"; }
 
 		void resize(uint64_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }

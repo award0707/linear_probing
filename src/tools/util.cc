@@ -33,11 +33,21 @@ median(vector<duration<double> > dv)
 }
 
 std::ostream&
-operator<<(std::ostream& os, const vector<duration<double> >& v)
+operator<<(std::ostream& os, const std::vector<duration<double> >& v)
 {
-	os << "[";
-	for (auto &i : v) os << " " << i.count();
-	os << "]";
+	os << '[';
+	for (auto &i : v)
+		os << i.count() << ' ';
+	os << ']';
 	return os;
 }
 
+
+std::ostream& operator<<(std::ostream& os, const std::vector<int>& v)
+{
+	os << '[';
+	for (auto &i : v)
+		os << i << ' ';
+	os << ']';
+	return os;
+}

@@ -10,6 +10,7 @@ using std::chrono::duration;
 
 double mean(vector<duration<double> >);
 double median(vector<duration<double> >);
-std::ostream& operator<<(std::ostream&, const vector<duration<double> >&);
+std::ostream& operator<<(std::ostream&, const vector<duration<double>>&);
+std::ostream& operator<<(std::ostream&, const vector<int>&);
 
 #endif

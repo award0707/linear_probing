@@ -13,6 +13,7 @@
 
 #include "pcg_random.hpp"
 #include "primes.h"
+#include "linear.h"
 
 #define KEY_MAX 2000000000L
 
@@ -102,6 +103,9 @@ class querytester {
 			assert (fails == 0);
 	}
 
+	void uniquething() {
+	}
+
 	void querytimer(hashtable *ht, const std::vector<int> &keys,
 			std::vector<duration<double> > *d,
 			int nq, int f_pct)
@@ -150,6 +154,7 @@ class querytester {
 			type = ht.table_type();
 			vector<int> keys;
 
+			uniquething();
 			uint64_t size = ht.table_size();
 			ht.set_max_load_factor(1.0);
 			keys.reserve(size);
@@ -179,6 +184,7 @@ class querytester {
 			}
 		}
 
+		// failed query test section
 		{
 			uint64_t b = 10'000'000;
 			int x = 500;
@@ -216,10 +222,9 @@ class querytester {
 	}
 
 	public:
-
 	querytester(pcg64 &r, std::vector<int> const &x,
 	            std::vector<uint64_t> const &b, int nq, int nt)
-	            : rng(r), xs(x), bs(b), nqueries(nq), ntests(nt) {
+	           : rng(r), xs(x), bs(b), nqueries(nq), ntests(nt) {
 		run_test();
 	}
 
@@ -228,5 +233,6 @@ class querytester {
 		return h.dump_query_stats(os);
 	}
 };
+
 #endif
 

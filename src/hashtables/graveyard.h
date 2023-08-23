@@ -76,7 +76,7 @@ class graveyard_aos {
 
 		graveyard_aos(std::size_t b);
 		~graveyard_aos();
-		std::string table_type() { return "graveyard_aos"; }
+		std::string table_type() const { return "graveyard_aos"; }
 
 		void resize(std::size_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }
@@ -105,14 +105,14 @@ class graveyard_aos {
 		void cluster_len(std::map<int, int>*) const;
 		void shift_distance(std::map<int, int>*) const;
 
-		int get_rebuild_window() { return rebuild_window; }
-		double load_factor() { return (double)records/buckets; }
-		double avg_misses() { return miss_running_avg; }
-		std::size_t table_size() { return buckets; }
-		std::size_t table_size_bytes() {
+		int get_rebuild_window() const { return rebuild_window; }
+		double load_factor() const { return (double)records/buckets; }
+		double avg_misses() const { return miss_running_avg; }
+		std::size_t table_size() const { return buckets; }
+		std::size_t table_size_bytes() const {
 			return buckets*sizeof(record_t);
 		}
-		std::size_t num_records() { return records; }
+		std::size_t num_records() const { return records; }
 
 		// debugging
 		void dump();
@@ -197,7 +197,7 @@ class graveyard_soa {
 
 		graveyard_soa(std::size_t b);
 		~graveyard_soa();
-		std::string table_type() { return "graveyard_soa"; }
+		std::string table_type() const { return "graveyard_soa"; }
 
 		void resize(std::size_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }
@@ -221,20 +221,18 @@ class graveyard_soa {
 		void report_testing_stats(std::ostream &os = std::cout,
 		                          bool verbose = true);
 
-		// return cluster length data, with clusters bounded either by
-		// empty slots or by tombstones
 		void cluster_len(std::map<int, int>*) const;
 		void shift_distance(std::map<int, int>*) const;
 
-		int get_rebuild_window() { return rebuild_window; }
-		double load_factor() { return (double)records/buckets; }
-		double avg_misses() { return miss_running_avg; }
-		std::size_t table_size() { return buckets; }
-		std::size_t table_size_bytes() {
+		int get_rebuild_window() const { return rebuild_window; }
+		double load_factor() const { return (double)records/buckets; }
+		double avg_misses() const { return miss_running_avg; }
+		std::size_t table_size() const { return buckets; }
+		std::size_t table_size_bytes() const {
 			return buckets
 			       * (sizeof(K)+sizeof(V)+sizeof(slot_state));
 		}
-		std::size_t num_records() { return records; }
+		std::size_t num_records() const { return records; }
 
 		// debugging
 		void dump();

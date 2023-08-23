@@ -5,28 +5,28 @@ INC = -I. -Itesters -Ihashtables -Itools
 
 tabletypes = graveyard_aos ordered_aos linear_aos graveyard_soa \
 	     ordered_soa linear_soa
-testers = querytester
+testers = querytester rebuildtester loadtester
 benches = tabletest querystats queuestats xtester rebuildstats \
-	  floatstats loadbench 
+	  floatstats loadstats
 
-DEPS = $(wildcard tools/primes.*) $(wildcard tables/*.h) \
-       $(wildcard testers/*.hpp)
+TABLEDEPS = $(wildcard tools/*) $(wildcard hashtables/*.h)
+TESTERDEPS = $(wildcard tools/*) $(wildcard testers/*.hpp)
 SRC = $(tabletypes:%=tables/%.cc) 
 OBJ = $(tabletypes:%=obj/%.o) obj/primes.o obj/util.o
 
 all: tests
 
-obj/%.o: hashtables/%.cc $(DEPS)
+obj/%.o: hashtables/%.cc $(TABLEDEPS)
 	mkdir -p obj
 	@echo $@
 	$(CC) -c -o $@ $< $(CFLAGS) $(INC)
 
-obj/%.o: %.cc $(DEPS) 
+obj/%.o: %.cc $(TABLEDEPS) $(TESTERDEPS) 
 	mkdir -p obj
 	@echo $@
 	$(CC) -c -o $@ $< $(CFLAGS) $(INC)
 
-obj/%.o: tools/%.cc $(DEPS)
+obj/%.o: tools/%.cc $(wildcard tools/*)
 	mkdir -p obj
 	@echo $@
 	$(CC) -c -o $@ $< $(CFLAGS) $(INC)

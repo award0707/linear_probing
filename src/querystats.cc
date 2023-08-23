@@ -30,18 +30,12 @@ int main(int argc, char **argv)
 	const int nt = 10;              // number of tests to average over
 
 	std::ofstream f("output_querystats");
-//	f << querytester<graveyard_soa<int, int> >(rng, xs, bs, nq, nt);
-//	f << querytester<graveyard_aos<int, int> >(rng, xs, bs, nq, nt);
-//	f << querytester<ordered_aos<int, int> >(rng, xs, bs, nq, nt);
-//	f << querytester<linear_aos<int, int> >(rng, xs, bs, nq, nt);
-//
-
-	f << querytester<ordered_aos<int, int> >(rng, xs, bs, nq, nt);
-	f << std::flush;
+	f << querytester<graveyard_soa<int, int> >(rng, xs, bs, nq, nt);
+	f << querytester<graveyard_aos<int, int> >(rng, xs, bs, nq, nt);
 	f << querytester<ordered_soa<int, int> >(rng, xs, bs, nq, nt);
-	f << std::flush;
+	f << querytester<ordered_aos<int, int> >(rng, xs, bs, nq, nt);
 	f << querytester<linear_soa<int, int> >(rng, xs, bs, nq, nt);
-	f << std::flush;
+	f << querytester<linear_aos<int, int> >(rng, xs, bs, nq, nt);
 	f.close();
 
 	cout << "Complete\n";

@@ -63,7 +63,7 @@ linear_soa<K, V>::resize(uint64_t b)
 	V *oldv = table.value;
 	slot_state *olds = table.state;
 
-	cerr << "resize(): rehashing into " << b << " buckets\n";
+//	cerr << "resize(): rehashing into " << b << " buckets\n";
 
 	table.key = new K[b];
 	if (!table.key) cerr << "couldn't allocate keys for resize\n";
@@ -240,7 +240,7 @@ linear_soa<K, V>::reset_perf_counts()
 	insert_misses = query_misses = remove_misses = 0;
 	rebuild_insert_misses = 0;
 	failed_inserts = failed_removes = failed_queries = duplicates = 0;
-	longest_search = 0;
+	insert_shifts = longest_search = 0;
 	total_misses = 0;
 	miss_running_avg = 0;
 	search_count = 0;

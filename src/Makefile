@@ -41,5 +41,5 @@ test:
 	@echo $(OBJ)
 
 clean :
-	rm obj/*.o $(benches)
+	-rm obj/*.o -f $(benches)
 

@@ -12,9 +12,7 @@
 #include "pcg_random.hpp"
 #include "primes.h"
 
-#define KEY_MAX 2000000000L
-
-#define VERIFY    /* debug: exhaustively test all keys and values inserted */
+//#define VERIFY    /* debug: exhaustively test all keys and values inserted */
 //#define VERBOSE   /* enable progress meter */
 
 using std::chrono::steady_clock;
@@ -135,11 +133,10 @@ class loadtester {
 	{
 		ht.set_max_load_factor(1.0);	// disable automatic resizing
 
-		std::cout << "Using table type " << ht.table_type()
-		          << ", table size=" << ht.table_size()
+		std::cout << "Table type " << ht.table_type()
+		          << ", n=" << ht.table_size()
 		          << " (" << (double)ht.table_size_bytes() << " bytes)"
 		          << ", lf=" << target_lf << "\n";
-
 
 		const std::size_t max = std::numeric_limits<uint32_t>::max();
 		std::uniform_int_distribution<uint32_t> data(0,max);

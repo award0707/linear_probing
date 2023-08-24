@@ -18,7 +18,7 @@
 pcg_extras::seed_seq_from<std::random_device> seed_source;
 pcg64 rng(seed_source);
 
-using hashtable = graveyard_aos;
+using hashtable = graveyard_aos<>;
 
 using std::chrono::steady_clock;
 using std::chrono::time_point;
@@ -148,6 +148,8 @@ double median(std::vector<int> v)
 void dump_queue_stats(const vector<queue_stats_t> &v,
                       std::ostream &o = std::cout)
 {
+	o << "\n------------------------------------------------------\n";
+	o << "n, x, a, R, Max queue length array, Mean, Median\n";
 	for (queue_stats_t q : v) {
 		o << q.n << ", " << q.x << ", ";
 		o << q.alpha << ", " << q.rebuild_window << ", ";
@@ -203,9 +205,8 @@ int main(int argc, char **argv)
 		}
 	}
 
-	cout << "\n------------------------------------------------------\n";
-	cout << "n, x, a, R, Max queue length array, Mean, Median\n";
-	dump_queue_stats(queuestats);
+	std::fstream f("graveyard_queuestats");
+	dump_queue_stats(queuestats, f);
 
 	return 0;
 }

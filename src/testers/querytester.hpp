@@ -5,17 +5,15 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
+#include <cstdint>
 #include <unistd.h>
 #include <vector>
-#include <numeric>
 #include <random>
 #include <chrono>
 
 #include "pcg_random.hpp"
 #include "primes.h"
 #include "linear.h"
-
-#define KEY_MAX 2000000000L
 
 using std::chrono::duration;
 using std::chrono::steady_clock;
@@ -33,6 +31,7 @@ class querytester {
 	const std::vector<uint64_t> &bs;
 	int nqueries;
 	int ntests;
+	int f_pct;
 
 	struct query_stats_t {
 		int nqueries;
@@ -54,7 +53,7 @@ class querytester {
 		int stat_timer = interval;
 		uint64_t k;
 
-		uniform_int_distribution<uint64_t> data(0,KEY_MAX);
+		uniform_int_distribution<uint64_t> data(0,UINT32_MAX);
 		cout << "Loading: " << ht->load_factor() << " -> "
 		     << lf << "\n";
 
@@ -83,11 +82,11 @@ class querytester {
 	void querying(hashtable *ht, const std::vector<int> &keys,
 	              int nq, int f_pct)
 	{
-		int k, v;
+		uint32_t k, v;
 		uint64_t fails = 0;
 
 		uniform_int_distribution<size_t> p(0,keys.size()-1);
-		uniform_int_distribution<uint64_t> data(0,KEY_MAX);
+		uniform_int_distribution<uint32_t> data(0,UINT32_MAX);
 		uniform_int_distribution<int> fail(0,99);
 		
 		for (int i = 0; i < nq; ++i) {
@@ -101,9 +100,6 @@ class querytester {
 
 		if (f_pct == 0)
 			assert (fails == 0);
-	}
-
-	void uniquething() {
 	}
 
 	void querytimer(hashtable *ht, const std::vector<int> &keys,
@@ -154,7 +150,6 @@ class querytester {
 			type = ht.table_type();
 			vector<int> keys;
 
-			uniquething();
 			uint64_t size = ht.table_size();
 			ht.set_max_load_factor(1.0);
 			keys.reserve(size);
@@ -171,43 +166,7 @@ class querytester {
 
 				query_stats_t q {
 					.nqueries            = nqueries,
-					.failrate            = 0,
-					.query_time          = times,
-					.mean_query_time     = mean(times),
-					.median_query_time   = median(times),
-					.alpha               = ht.load_factor(),
-					.x                   = x,
-					.n                   = ht.table_size(),
-				};
-
-				querystats.push_back(q);
-			}
-		}
-
-		// failed query test section
-		{
-			uint64_t b = 10'000'000;
-			int x = 500;
-			double lf = 1.0 - (1.0 / x);
-			hashtable ht(next_prime(b));
-			vector<int> keys;
-
-			uint64_t size = ht.table_size();
-			ht.set_max_load_factor(1.0);
-			keys.reserve(size);
-			loadtable(&ht, &keys, lf);
-			for (int fr = 0; fr < 100; fr += 10) {
-				cout << "Table size: " << size
-				     << ", x=" << x
-				     << " (lf=" << lf << "), fail rate "
-				     << fr << ": ";
-
-				vector <duration<double> > times;
-				querytimer(&ht, keys, &times, nqueries, fr);
-
-				query_stats_t q {
-					.nqueries            = nqueries,
-					.failrate            = fr,
+					.failrate            = f_pct,
 					.query_time          = times,
 					.mean_query_time     = mean(times),
 					.median_query_time   = median(times),
@@ -223,8 +182,8 @@ class querytester {
 
 	public:
 	querytester(pcg64 &r, std::vector<int> const &x,
-	            std::vector<uint64_t> const &b, int nq, int nt)
-	           : rng(r), xs(x), bs(b), nqueries(nq), ntests(nt) {
+	            std::vector<uint64_t> const &b, int nq, int nt, int fp)
+	           : rng(r), xs(x), bs(b), nqueries(nq), ntests(nt), f_pct(fp) {
 		run_test();
 	}
 

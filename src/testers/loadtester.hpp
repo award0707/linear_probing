@@ -14,8 +14,8 @@
 
 #define KEY_MAX 2000000000L
 
-/* debug: exhaustively test all keys and values inserted */
-//#define VERIFY
+#define VERIFY    /* debug: exhaustively test all keys and values inserted */
+//#define VERBOSE   /* enable progress meter */
 
 using std::chrono::steady_clock;
 using std::chrono::time_point;
@@ -140,50 +140,58 @@ class loadtester {
 		          << " (" << (double)ht.table_size_bytes() << " bytes)"
 		          << ", lf=" << target_lf << "\n";
 
-		std::uniform_int_distribution<uint64_t> data(0,KEY_MAX);
-		std::vector<int> keys;
+
+		const std::size_t max = std::numeric_limits<uint32_t>::max();
+		std::uniform_int_distribution<uint32_t> data(0,max);
+		std::vector<uint32_t> keys;
 		keys.reserve(ht.table_size());
 
 		int insert_interval = (ht.table_size() * target_lf) / intervals;
 		opcount = 0;
 
-		uint64_t k;
+		uint32_t k;
 		int stat_timer = insert_interval;
 		push_timing_data();
 		while(ht.load_factor() < target_lf) {
 			k = data(rng);
 			using result = hashtable::result;
-			result r = ht.insert(k, k/2);
+			result r = ht.insert(k, k>>2);
+		//	if (opcount == 10000) {
+		//		std::cout << "put in " << k << ", " << k>>2
+		//			<< ": 
+
 			if (r == result::SUCCESS || r == result::REBUILD)
 				keys.push_back(k);
 			if (r == result::REBUILD && loadrebuild)
 				ht.rebuild();
 
 			opcount++;
-
 			if (--stat_timer == 0) {
 				push_timing_data();
 				ht.longest_search = 0;
 				stat_timer = insert_interval;
+#ifdef VERBOSE
 				std::cout << "\r["
 				          << ht.load_factor()/target_lf*100
 				          << "% complete]   " << std::flush;
+#endif
 			}
 		}
 
 		if (stat_timer != insert_interval)
 			push_timing_data();
-
+#ifdef VERBOSE
 		std::cout << "\r[" << ht.load_factor()/target_lf*100
 		          << "% complete]     \n";
 		std::cout << "\n======== Load complete ========\n";
+#endif
 
 #ifdef VERIFY
 		std::cout << "\n\e[1mVerification\e[0m:\n";
-		int v;
-		for(int x : keys) {
+		uint32_t v;
+		for(uint32_t x : keys) {
 			assert(ht.query(x,&v) == true);
-			assert(v == x/2);
+			assert(v == x>>2);
 		}
 #endif
 		ht.report_testing_stats();

@@ -10,7 +10,7 @@ using std::cerr, std::size_t;
 template class graveyard_soa<>;
 
 template<typename K, typename V>
-graveyard_soa<K, V>::graveyard_soa(uint64_t b)
+graveyard_soa<K, V>::graveyard_soa(uint32_t b)
 {
 	prime_index = 0;
 	while(b > primes[prime_index])
@@ -23,7 +23,7 @@ graveyard_soa<K, V>::graveyard_soa(uint64_t b)
 	table.state = new enum slot_state[b];
 	if (!table.state) cerr << "Couldn't allocate states\n";
 
-	for(uint64_t i=0; i<b; i++)
+	for(uint32_t i=0; i<b; i++)
 		table.state[i] = EMPTY;
 
 	max_load_factor = 0.5;
@@ -50,18 +50,17 @@ graveyard_soa<K, V>::~graveyard_soa()
 }
 
 template<typename K, typename V>
-uint64_t
-graveyard_soa<K, V>::hash(int k) const
+uint32_t
+graveyard_soa<K, V>::hash(K k) const
 {
-	int64_t r = k % buckets;
-	return (r<0) ? r+buckets : r;
+	return (uint32_t)(((uint64_t)k*(uint64_t)buckets)>>32);
 }
 
 template<typename K, typename V>
 void
-graveyard_soa<K, V>::resize(uint64_t b)
+graveyard_soa<K, V>::resize(uint32_t b)
 {
-	uint64_t oldbuckets = buckets;
+	uint32_t oldbuckets = buckets;
 	K *oldk = table.key;
 	V *oldv = table.value;
 	slot_state *olds = table.state;
@@ -75,13 +74,13 @@ graveyard_soa<K, V>::resize(uint64_t b)
 	table.state = new enum slot_state[b];
 	if (!table.state) cerr << "couldn't allocate states for resize\n";
 
-	for(uint64_t i=0; i<b; ++i)
+	for(uint32_t i=0; i<b; ++i)
 		table.state[i] = EMPTY;
 	records = 0;
 	tombs = 0;
 	buckets = b;
 
-	for(uint64_t i=0; i<oldbuckets; ++i) {
+	for(uint32_t i=0; i<oldbuckets; ++i) {
 		if (olds[i] == FULL)
 			insert(oldk[i], oldv[i], true);
 	}
@@ -94,12 +93,12 @@ graveyard_soa<K, V>::resize(uint64_t b)
 
 template<typename K, typename V>
 bool
-graveyard_soa<K, V>::probe(K k, uint64_t *slot, optype operation, bool* wrapped)
+graveyard_soa<K, V>::probe(K k, uint32_t *slot, optype operation, bool* wrapped)
 {
-	const uint64_t h = hash(k);
-	uint64_t miss = 1;
+	const uint32_t h = hash(k);
+	uint64_t miss = 0;
 	bool res = false;
-	uint64_t s = std::max(h, table_head);
+	uint32_t s = std::max(h, table_head);
 
 	switch(operation) {
 	case INSERT:
@@ -142,7 +141,7 @@ graveyard_soa<K, V>::probe(K k, uint64_t *slot, optype operation, bool* wrapped)
 
 template<typename K, typename V>
 inline void
-graveyard_soa<K, V>::slotmove(uint64_t destidx, uint64_t srcidx, size_t count)
+graveyard_soa<K, V>::slotmove(uint32_t destidx, uint32_t srcidx, size_t count)
 {
 	std::memmove(&table.key[destidx], &table.key[srcidx],
 	        sizeof(K) * count);
@@ -154,11 +153,11 @@ graveyard_soa<K, V>::slotmove(uint64_t destidx, uint64_t srcidx, size_t count)
 
 // find the end of the cluster, then slide records 1 to the right as a block
 template<typename K, typename V>
-uint64_t
-graveyard_soa<K, V>::shift(uint64_t start)
+uint32_t
+graveyard_soa<K, V>::shift(uint32_t start)
 {
-	const uint64_t last = buckets-1;
-	uint64_t end = start;
+	const uint32_t last = buckets-1;
+	uint32_t end = start;
 
 	do
 		if (++end > last) end = 0;
@@ -179,9 +178,9 @@ graveyard_soa<K, V>::shift(uint64_t start)
 
 template<typename K, typename V>
 int
-graveyard_soa<K, V>::rebuild_seek(uint64_t x, uint64_t &end)
+graveyard_soa<K, V>::rebuild_seek(uint32_t x, uint32_t &end)
 {
-	const uint64_t last = buckets-1;
+	const uint32_t last = buckets-1;
 	while(1) {
 		if (x > last) {
 			end = last;
@@ -198,12 +197,12 @@ graveyard_soa<K, V>::rebuild_seek(uint64_t x, uint64_t &end)
 }
 
 template<typename K, typename V>
-uint64_t
-graveyard_soa<K, V>::rebuild_shift(uint64_t start)
+uint32_t
+graveyard_soa<K, V>::rebuild_shift(uint32_t start)
 {
 	record_t lastscratch, scratch;
 	bool valid = false;
-	uint64_t end;
+	uint32_t end;
 
 	while(1) {
 		int res = rebuild_seek(start, end);
@@ -238,7 +237,7 @@ template<typename K, typename V>
 graveyard_soa<K,V>::result
 graveyard_soa<K,V>::insert(K k, V v, bool rebuilding)
 {
-	uint64_t slot;
+	uint32_t slot;
 	bool wrapped=false;
 
 	if (records>=buckets) {
@@ -254,7 +253,7 @@ graveyard_soa<K,V>::insert(K k, V v, bool rebuilding)
 	}
 
 	if (!empty(slot)) {
-		uint64_t end;
+		uint32_t end;
 		end = (!rebuilding) ? shift(slot) : rebuild_shift(slot);
 		if (((end < slot) || wrapped) && end >= table_head)
 			++table_head;
@@ -294,7 +293,7 @@ template<typename K, typename V>
 bool
 graveyard_soa<K, V>::query(K k, V *v)
 {
-	uint64_t slot;
+	uint32_t slot;
 	++queries;
 
 	if (probe(k, &slot, QUERY)) {
@@ -310,7 +309,7 @@ template<typename K, typename V>
 graveyard_soa<K, V>::result
 graveyard_soa<K, V>::remove(K k)
 {
-	uint64_t slot;
+	uint32_t slot;
 	++removes;
 
 	if (probe(k, &slot, REMOVE)) {
@@ -345,7 +344,7 @@ graveyard_soa<K, V>::rebuild()
 
 	// save the part of the table that wrapped for reinsertion later
 	std::vector<record_t> overflow;
-	for(uint64_t p = 0; p < table_head; ++p)
+	for(uint32_t p = 0; p < table_head; ++p)
 		if (full(p)) {
 			overflow.push_back({table.key[p],
 			                    table.value[p],
@@ -356,7 +355,7 @@ graveyard_soa<K, V>::rebuild()
 	table_head = 0;
 
 	boost::circular_buffer<record_t> queue(tombcount);
-	for(uint64_t p = 0, q = 1, x = interval; p < buckets; p++) {
+	for(uint32_t p = 0, q = 1, x = interval; p < buckets; p++) {
 		if (--x == 0) {
 			if (full(p)) queue.push_back({table.key[p],
 			                              table.value[p],
@@ -488,9 +487,9 @@ template<typename K,typename V>
 void
 graveyard_soa<K,V>::cluster_len(std::map<int,int> *clust) const
 {
-	uint64_t last_empty, last_tomb;
+	uint32_t last_empty, last_tomb;
 	last_empty = last_tomb = table_head;
-	for(uint64_t p = table_head; p < buckets; ++p) {
+	for(uint32_t p = table_head; p < buckets; ++p) {
 		if (!full(p)) {
 			int dist = std::min(p - last_empty, p - last_tomb);
 			if (dist > 1) (*clust)[dist-1]++;
@@ -500,7 +499,7 @@ graveyard_soa<K,V>::cluster_len(std::map<int,int> *clust) const
 	}
 
 	// keep counting once we wrap the table
-	for(uint64_t p = 0; p < table_head; ++p) {
+	for(uint32_t p = 0; p < table_head; ++p) {
 		if (!full(p)) {
 			// detect if the cluster wrapped
 			int x = last_empty >= table_head ?
@@ -521,9 +520,9 @@ template<typename K, typename V>
 void
 graveyard_soa<K,V>::shift_distance(std::map<int,int> *disp) const
 {
-	for(uint64_t p = 0; p < buckets; ++p) {
+	for(uint32_t p = 0; p < buckets; ++p) {
 		if (full(p)) {
-			uint64_t h = hash(key(p));
+			uint32_t h = hash(key(p));
 			int d = (p >= table_head ? p - h : buckets - h + p);
 			if (d < 0)
 				std::cerr << "Negative shift length at slot "
@@ -538,7 +537,7 @@ template<typename K, typename V>
 bool
 graveyard_soa<K,V>::check_ordering()
 {
-	uint64_t p = table_head, q;
+	uint32_t p = table_head, q;
 	bool wrapped = false, res = true;
 
 	while (!full(p)) ++p;
@@ -568,7 +567,7 @@ template<typename K, typename V>
 void
 graveyard_soa<K, V>::dump()
 {
-	for(size_t i=0; i<buckets; i++) {
+	for(uint32_t i=0; i<buckets; i++) {
 		if ((i!=0) && (i%10 == 0)) std::cout << "\n";
 		std::cout.width(4);
 		std::cout << i << ':';

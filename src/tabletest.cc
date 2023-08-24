@@ -12,7 +12,7 @@
 #define INFINITE	/* test in an infinite loop, breaking only on error */
 #define READD_BEFORE	/* do a readd test before rebuilding */
 
-using hashtable = ordered_aos<int, int>;
+using hashtable = graveyard_aos<uint32_t, int>;
 using result = hashtable::result;
 
 bool check(hashtable &h)
@@ -43,9 +43,9 @@ main()
 	using std::uniform_int_distribution, std::mt19937;
 	std::random_device dev;
 	mt19937 rng(dev());
-	uniform_int_distribution<mt19937::result_type> testset(0,9999-SIZE);
-	uniform_int_distribution<mt19937::result_type> testset2(9999-SIZE,9999);
-	uint64_t run = 0;
+	const std::size_t max = std::numeric_limits<uint32_t>::max();
+	uniform_int_distribution<mt19937::result_type> testset(0,max);
+	int run = 0;
 
 #ifdef INFINITE
 	while (1) {
@@ -93,7 +93,7 @@ main()
 #ifdef READD_BEFORE
 		// add records back before the rebuild
 		for(int i=0; i<SIZE/5; i++) {
-			int k = testset2(rng);
+			int k = testset(rng);
 			if (t.insert(k,k*2) != result::FAILURE)
 				keys.push_back(k);
 			else
@@ -110,7 +110,7 @@ main()
 
 		// add some more records back after the rebuild
 		for(int i=0; i<SIZE/5; i++) {
-			int k = testset2(rng);
+			int k = testset(rng);
 			result r = t.insert(k,k*2);
 			switch(r) {
 			case result::SUCCESS: // fall through

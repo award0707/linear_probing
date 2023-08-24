@@ -7,8 +7,8 @@
 #include <vector>
 #include <map>
 
-template <typename K = int,
-          typename V = int>
+template <typename K = uint32_t,
+          typename V = uint32_t>
 class ordered_aos {
 	private:
 		enum slot_state { FULL, EMPTY, TOMB };
@@ -20,10 +20,10 @@ class ordered_aos {
 			slot_state state;
 		} *table;
 
-		std::size_t buckets;
-		std::size_t records;
-		std::size_t tombs;
-		uint64_t table_head;
+		uint32_t buckets;
+		uint32_t records;
+		uint32_t tombs;
+		uint32_t table_head;
 		int rebuild_window;
 		
 		int prime_index;
@@ -32,51 +32,51 @@ class ordered_aos {
 		uint64_t search_count;
 		double miss_running_avg;
 
-		uint64_t hash(K k) const;
-		bool probe(K k, uint64_t *slot, optype operation,
+		uint32_t hash(K k) const;
+		bool probe(K k, uint32_t *slot, optype operation,
 		           bool* wrapped = NULL);
-		uint64_t shift(uint64_t slot);
+		uint32_t shift(uint32_t slot);
 
 		void reset_rebuild_window();
 		void update_misses(uint64_t misses, enum optype op);
 
-		inline slot_state state(uint64_t k) const {
+		inline slot_state state(uint32_t k) const {
 			return table[k].state;
 		}
-		inline K& key(uint64_t k) const {
+		inline K& key(uint32_t k) const {
 			return table[k].key;
 		}
-		inline V& value(uint64_t k) const {
+		inline V& value(uint32_t k) const {
 			return table[k].value;
 		}
 
-		inline void setkey(uint64_t k, K x)
+		inline void setkey(uint32_t k, K x)
 			{ table[k].key = x; }
-		inline void setvalue(uint64_t k, V v)
+		inline void setvalue(uint32_t k, V v)
 			{ table[k].value = v; }
 
-		inline void setfull(uint64_t k) { table[k].state = FULL; }
-		inline void setempty(uint64_t k) { table[k].state = EMPTY; }
-		inline void settomb(uint64_t k) { table[k].state = TOMB; }
+		inline void setfull(uint32_t k) { table[k].state = FULL; }
+		inline void setempty(uint32_t k) { table[k].state = EMPTY; }
+		inline void settomb(uint32_t k) { table[k].state = TOMB; }
 
-		inline bool full(uint64_t k) const {
+		inline bool full(uint32_t k) const {
 			return state(k) == FULL;
 		}
-		inline bool empty(uint64_t k) const {
+		inline bool empty(uint32_t k) const {
 			return state(k) == EMPTY;
 		}
-		inline bool tomb(uint64_t k) const {
+		inline bool tomb(uint32_t k) const {
 			return state(k) == TOMB;
 		}
 
 	public:
 		enum result { SUCCESS, FAILURE, REBUILD, DUPLICATE, FULLTABLE };
 
-		ordered_aos(uint64_t b);
+		ordered_aos(uint32_t b);
 		~ordered_aos();
 		std::string table_type() const { return "ordered_aos"; }
 
-		void resize(uint64_t);
+		void resize(uint32_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }
 		
 		result insert(K key, V value, bool rebuilding = false);
@@ -104,11 +104,11 @@ class ordered_aos {
 		int get_rebuild_window() const { return rebuild_window; }
 		double load_factor() const { return (double)records/buckets; }
 		double avg_misses() const { return miss_running_avg; }
-		uint64_t table_size() const { return buckets; }
+		uint32_t table_size() const { return buckets; }
 		uint64_t table_size_bytes() const {
 			return buckets*sizeof(record);
 		}
-		uint64_t num_records() const { return records; }
+		uint32_t num_records() const { return records; }
 
 		// debugging
 		void dump();
@@ -116,8 +116,8 @@ class ordered_aos {
 		bool check_ordering();
 };
 
-template <typename K = int,
-          typename V = int>
+template <typename K = uint32_t,
+          typename V = uint32_t>
 class ordered_soa {
 	private:
 		enum slot_state { FULL, EMPTY, TOMB };
@@ -138,7 +138,7 @@ class ordered_soa {
 		std::size_t buckets;
 		std::size_t records;
 		std::size_t tombs;
-		uint64_t table_head;
+		uint32_t table_head;
 		int rebuild_window;
 		
 		int prime_index;
@@ -147,54 +147,54 @@ class ordered_soa {
 		uint64_t search_count;
 		double miss_running_avg;
 
-		uint64_t hash(K k) const;
-		bool probe(K k, uint64_t *slot, optype operation,
+		uint32_t hash(K k) const;
+		bool probe(K k, uint32_t *slot, optype operation,
 		           bool* wrapped = NULL);
-		uint64_t shift(uint64_t slot);
+		uint32_t shift(uint32_t slot);
 
 		void reset_rebuild_window();
 		void update_misses(uint64_t misses, enum optype op);
 
-		inline void slotmove(uint64_t destidx, uint64_t srcidx,
+		inline void slotmove(uint32_t destidx, uint32_t srcidx,
 		                     size_t count);
 
-		inline slot_state state(uint64_t k) const {
+		inline slot_state state(uint32_t k) const {
 			return table.state[k];
 		}
-		inline K& key(uint64_t k) const {
+		inline K& key(uint32_t k) const {
 			return table.key[k];
 		}
-		inline V& value(uint64_t k) const {
+		inline V& value(uint32_t k) const {
 			return table.value[k];
 		}
 
-		inline void setkey(uint64_t k, K x)
+		inline void setkey(uint32_t k, K x)
 			{ table.key[k] = x; }
-		inline void setvalue(uint64_t k, V v)
+		inline void setvalue(uint32_t k, V v)
 			{ table.value[k] = v; }
 
-		inline void setfull(uint64_t k) { table.state[k] = FULL; }
-		inline void setempty(uint64_t k) { table.state[k] = EMPTY; }
-		inline void settomb(uint64_t k) { table.state[k] = TOMB; }
+		inline void setfull(uint32_t k) { table.state[k] = FULL; }
+		inline void setempty(uint32_t k) { table.state[k] = EMPTY; }
+		inline void settomb(uint32_t k) { table.state[k] = TOMB; }
 
-		inline bool full(uint64_t k) const {
+		inline bool full(uint32_t k) const {
 			return state(k) == FULL;
 		}
-		inline bool empty(uint64_t k) const {
+		inline bool empty(uint32_t k) const {
 			return state(k) == EMPTY;
 		}
-		inline bool tomb(uint64_t k) const {
+		inline bool tomb(uint32_t k) const {
 			return state(k) == TOMB;
 		}
 
 	public:
 		enum result { SUCCESS, FAILURE, REBUILD, DUPLICATE, FULLTABLE };
 
-		ordered_soa(uint64_t b);
+		ordered_soa(uint32_t b);
 		~ordered_soa();
 		std::string table_type() const { return "ordered_soa"; }
 
-		void resize(uint64_t);
+		void resize(uint32_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }
 		
 		result insert(K key, V value, bool rebuilding = false);
@@ -222,11 +222,11 @@ class ordered_soa {
 		int get_rebuild_window() const { return rebuild_window; }
 		double load_factor() const { return (double)records/buckets; }
 		double avg_misses() const { return miss_running_avg; }
-		uint64_t table_size() const { return buckets; }
+		uint32_t table_size() const { return buckets; }
 		uint64_t table_size_bytes() const {
 			return buckets*sizeof(record_t);
 		}
-		uint64_t num_records() const { return records; }
+		uint32_t num_records() const { return records; }
 
 		// debugging
 		void dump();

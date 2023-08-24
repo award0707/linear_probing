@@ -7,8 +7,8 @@
 #include <vector>
 #include <map>
 
-template <typename K = int,
-          typename V = int>
+template <typename K = uint32_t,
+          typename V = uint32_t>
 class linear_aos {
 	private:
 		enum slot_state { FULL, EMPTY, TOMB };
@@ -20,9 +20,9 @@ class linear_aos {
 			slot_state state;
 		} *table;
 
-		std::size_t buckets;
-		std::size_t records;
-		std::size_t tombs;
+		uint32_t buckets;
+		uint32_t records;
+		uint32_t tombs;
 		int rebuild_window;
 
 		int prime_index;
@@ -31,49 +31,49 @@ class linear_aos {
 		uint64_t search_count;
 		double miss_running_avg;
 
-		uint64_t hash(K k) const;
-		bool probe(K k, uint64_t *slot, optype operation);
+		uint32_t hash(K k) const;
+		bool probe(K k, uint32_t *slot, optype operation);
 
 		void reset_rebuild_window();
 		void update_misses(uint64_t misses, enum optype op);
 
-		inline slot_state state(uint64_t k) const {
+		inline slot_state state(uint32_t k) const {
 			return table[k].state;
 		}
-		inline K& key(uint64_t k) const {
+		inline K& key(uint32_t k) const {
 			return table[k].key;
 		}
-		inline V& value(uint64_t k) const {
+		inline V& value(uint32_t k) const {
 			return table[k].value;
 		}
 
-		inline void setkey(uint64_t k, K x)
+		inline void setkey(uint32_t k, K x)
 			{ table[k].key = x; }
-		inline void setvalue(uint64_t k, V v)
+		inline void setvalue(uint32_t k, V v)
 			{ table[k].value = v; }
 
-		inline void setfull(uint64_t k) { table[k].state = FULL; }
-		inline void setempty(uint64_t k) { table[k].state = EMPTY; }
-		inline void settomb(uint64_t k) { table[k].state = TOMB; }
+		inline void setfull(uint32_t k) { table[k].state = FULL; }
+		inline void setempty(uint32_t k) { table[k].state = EMPTY; }
+		inline void settomb(uint32_t k) { table[k].state = TOMB; }
 
-		inline bool full(uint64_t k) const {
+		inline bool full(uint32_t k) const {
 			return state(k) == FULL;
 		}
-		inline bool empty(uint64_t k) const {
+		inline bool empty(uint32_t k) const {
 			return state(k) == EMPTY;
 		}
-		inline bool tomb(uint64_t k) const {
+		inline bool tomb(uint32_t k) const {
 			return state(k) == TOMB;
 		}
 
 	public:
 		enum result { SUCCESS, FAILURE, REBUILD, DUPLICATE, FULLTABLE };
 
-		linear_aos(std::size_t b);
+		linear_aos(uint32_t b);
 		~linear_aos();
 		std::string table_type() const { return "linear_aos"; }
 
-		void resize(std::size_t);
+		void resize(uint32_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }
 
 		result insert(K key, V value, bool rebuilding = false);
@@ -116,8 +116,8 @@ class linear_aos {
 		bool check_ordering() { return true; }
 };
 
-template <typename K = int,
-          typename V = int>
+template <typename K = uint32_t,
+          typename V = uint32_t>
 class linear_soa {
 	private:
 		enum slot_state { FULL, EMPTY, TOMB };
@@ -135,9 +135,9 @@ class linear_soa {
 			slot_state *state;
 		} table;
 
-		std::size_t buckets;
-		std::size_t records;
-		std::size_t tombs;
+		uint32_t buckets;
+		uint32_t records;
+		uint32_t tombs;
 		int rebuild_window;
 
 		int prime_index;
@@ -146,49 +146,49 @@ class linear_soa {
 		uint64_t search_count;
 		double miss_running_avg;
 
-		uint64_t hash(K k) const;
-		bool probe(K k, uint64_t *slot, optype operation);
+		uint32_t hash(K k) const;
+		bool probe(K k, uint32_t *slot, optype operation);
 
 		void reset_rebuild_window();
 		void update_misses(uint64_t misses, enum optype op);
 
-		inline slot_state state(uint64_t k) const {
+		inline slot_state state(uint32_t k) const {
 			return table.state[k];
 		}
-		inline K& key(uint64_t k) const {
+		inline K& key(uint32_t k) const {
 			return table.key[k];
 		}
-		inline V& value(uint64_t k) const {
+		inline V& value(uint32_t k) const {
 			return table.value[k];
 		}
 
-		inline void setkey(uint64_t k, K x)
+		inline void setkey(uint32_t k, K x)
 			{ table.key[k] = x; }
-		inline void setvalue(uint64_t k, V v)
+		inline void setvalue(uint32_t k, V v)
 			{ table.value[k] = v; }
 
-		inline void setfull(uint64_t k) { table.state[k] = FULL; }
-		inline void setempty(uint64_t k) { table.state[k] = EMPTY; }
-		inline void settomb(uint64_t k) { table.state[k] = TOMB; }
+		inline void setfull(uint32_t k) { table.state[k] = FULL; }
+		inline void setempty(uint32_t k) { table.state[k] = EMPTY; }
+		inline void settomb(uint32_t k) { table.state[k] = TOMB; }
 
-		inline bool full(uint64_t k) const {
+		inline bool full(uint32_t k) const {
 			return state(k) == FULL;
 		}
-		inline bool empty(uint64_t k) const {
+		inline bool empty(uint32_t k) const {
 			return state(k) == EMPTY;
 		}
-		inline bool tomb(uint64_t k) const {
+		inline bool tomb(uint32_t k) const {
 			return state(k) == TOMB;
 		}
 
 	public:
 		enum result { SUCCESS, FAILURE, REBUILD, DUPLICATE, FULLTABLE };
 
-		linear_soa(std::size_t b);
+		linear_soa(uint32_t b);
 		~linear_soa();
 		std::string table_type() const { return "linear_soa"; }
 
-		void resize(std::size_t);
+		void resize(uint32_t);
 		void set_max_load_factor(double f) { max_load_factor = f; }
 
 		result insert(K key, V value, bool rebuilding = false);

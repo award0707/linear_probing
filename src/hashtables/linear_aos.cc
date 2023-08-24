@@ -8,7 +8,7 @@ using std::cerr, std::size_t;
 template class linear_aos<>;
 
 template <typename K, typename V>
-linear_aos<K, V>::linear_aos(uint64_t b)
+linear_aos<K, V>::linear_aos(uint32_t b)
 {
 	prime_index = 0;
 	while(b > primes[prime_index])
@@ -17,7 +17,7 @@ linear_aos<K, V>::linear_aos(uint64_t b)
 	table = new record_t[b];
 	if (!table) cerr << "Couldn't allocate\n";
 
-	for(uint64_t i=0; i<b; i++)
+	for(uint32_t i=0; i<b; i++)
 		table[i].state = EMPTY;
 
 	buckets = b;
@@ -41,18 +41,17 @@ linear_aos<K, V>::~linear_aos()
 }
 
 template <typename K, typename V>
-uint64_t
+uint32_t
 linear_aos<K, V>::hash(K k) const
 {
-	int64_t r = k % buckets;
-	return (r<0) ? r+buckets : r;
+	return (uint32_t)(((uint64_t)k * (uint64_t)buckets) >> 32);
 }
 
 template <typename K, typename V>
 void
-linear_aos<K, V>::resize(uint64_t b)
+linear_aos<K, V>::resize(uint32_t b)
 {
-	uint64_t oldbuckets = buckets;
+	uint32_t oldbuckets = buckets;
 	record_t *oldtable = table;
 
 	//cerr << "resize(): rehashing into " << b << " buckets\n";
@@ -62,13 +61,13 @@ linear_aos<K, V>::resize(uint64_t b)
 		cerr << "couldn't allocate for resize\n";
 		exit(1);
 	}
-	for(uint64_t i=0; i<b; ++i)
+	for(uint32_t i=0; i<b; ++i)
 		table[i].state = EMPTY;
 	records = 0;
 	buckets = b;
 	tombs = 0;
 
-	for(uint64_t i=0; i<oldbuckets; ++i)
+	for(uint32_t i=0; i<oldbuckets; ++i)
 		if (oldtable[i].state == FULL)
 			insert(oldtable[i].key, oldtable[i].value, true);
 
@@ -78,9 +77,9 @@ linear_aos<K, V>::resize(uint64_t b)
 
 template <typename K, typename V>
 bool
-linear_aos<K, V>::probe(K k, uint64_t *slot, optype operation)
+linear_aos<K, V>::probe(K k, uint32_t *slot, optype operation)
 {
-	uint64_t probe = hash(k);
+	uint32_t probe = hash(k);
 	uint32_t miss = 0;
 	bool res = false;
 
@@ -120,7 +119,7 @@ template <typename K, typename V>
 linear_aos<K, V>::result
 linear_aos<K, V>::insert(K k, V v, bool rebuilding)
 {
-	uint64_t slot;
+	uint32_t slot;
 
 	if (records>=buckets) {
 		failed_inserts++;
@@ -158,7 +157,7 @@ template <typename K, typename V>
 bool
 linear_aos<K, V>::query(K k, V *v)
 {
-	uint64_t slot;
+	uint32_t slot;
 	++queries;
 
 	if (probe(k, &slot, QUERY)) {
@@ -174,7 +173,7 @@ template <typename K, typename V>
 linear_aos<K, V>::result
 linear_aos<K, V>::remove(K k)
 {
-	uint64_t slot;
+	uint32_t slot;
 	++removes;
 	if (probe(k, &slot, REMOVE)) {
 		table[slot].state = TOMB;
@@ -282,7 +281,7 @@ template<typename K,typename V>
 void
 linear_aos<K,V>::cluster_len(std::map<int,int> *clust) const
 {
-	uint64_t first_nonfull, last_nonfull, p=0;
+	uint32_t first_nonfull, last_nonfull, p=0;
 
 	while (full(p)) ++p;
 	first_nonfull = last_nonfull = p;
@@ -305,9 +304,9 @@ template<typename K, typename V>
 void
 linear_aos<K,V>::shift_distance(std::map<int,int> *disp) const
 {
-	for(uint64_t p = 0; p < buckets; ++p)
+	for(uint32_t p = 0; p < buckets; ++p)
 		if (full(p)) {
-			uint64_t h = hash(key(p));
+			uint32_t h = hash(key(p));
 			int d = (p > h ? p - h : buckets - h + p);
 			(*disp)[d]++;
 		}

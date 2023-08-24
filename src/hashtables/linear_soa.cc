@@ -8,7 +8,7 @@ using std::cerr, std::size_t;
 template class linear_soa<>;
 
 template <typename K, typename V>
-linear_soa<K, V>::linear_soa(uint64_t b)
+linear_soa<K, V>::linear_soa(uint32_t b)
 {
 	prime_index = 0;
 	while(b > primes[prime_index])
@@ -21,7 +21,7 @@ linear_soa<K, V>::linear_soa(uint64_t b)
 	table.state = new enum slot_state[b];
 	if (!table.state) cerr << "Couldn't allocate states\n";
 
-	for(uint64_t i=0; i<b; i++)
+	for(uint32_t i=0; i<b; i++)
 		table.state[i] = EMPTY;
 
 	buckets = b;
@@ -47,18 +47,17 @@ linear_soa<K, V>::~linear_soa()
 }
 
 template <typename K, typename V>
-uint64_t
+uint32_t
 linear_soa<K, V>::hash(K k) const
 {
-	int64_t r = k % buckets;
-	return (r<0) ? r+buckets : r;
+	return (uint32_t)(((uint64_t)k * (uint64_t)buckets) >> 32);
 }
 
 template <typename K, typename V>
 void
-linear_soa<K, V>::resize(uint64_t b)
+linear_soa<K, V>::resize(uint32_t b)
 {
-	uint64_t oldbuckets = buckets;
+	uint32_t oldbuckets = buckets;
 	K *oldk = table.key;
 	V *oldv = table.value;
 	slot_state *olds = table.state;
@@ -72,13 +71,13 @@ linear_soa<K, V>::resize(uint64_t b)
 	table.state = new enum slot_state[b];
 	if (!table.state) cerr << "couldn't allocate states for resize\n";
 
-	for(uint64_t i=0; i<b; ++i)
+	for(uint32_t i=0; i<b; ++i)
 		table.state[i] = EMPTY;
 	records = 0;
 	tombs = 0;
 	buckets = b;
 
-	for(uint64_t i=0; i<oldbuckets; ++i) {
+	for(uint32_t i=0; i<oldbuckets; ++i) {
 		if (olds[i] == FULL)
 			insert(oldk[i], oldv[i], true);
 	}
@@ -91,9 +90,9 @@ linear_soa<K, V>::resize(uint64_t b)
 
 template <typename K, typename V>
 bool
-linear_soa<K, V>::probe(K k, uint64_t *slot, optype operation)
+linear_soa<K, V>::probe(K k, uint32_t *slot, optype operation)
 {
-	uint64_t probe = hash(k);
+	uint32_t probe = hash(k);
 	uint32_t miss = 0;
 	bool res = false;
 
@@ -133,7 +132,7 @@ template <typename K, typename V>
 linear_soa<K, V>::result
 linear_soa<K, V>::insert(K k, V v, bool rebuilding)
 {
-	uint64_t slot;
+	uint32_t slot;
 
 	if (records>=buckets) {
 		failed_inserts++;
@@ -171,7 +170,7 @@ template <typename K, typename V>
 bool
 linear_soa<K, V>::query(K k, V *v)
 {
-	uint64_t slot;
+	uint32_t slot;
 	++queries;
 
 	if (probe(k, &slot, QUERY)) {
@@ -187,7 +186,7 @@ template <typename K, typename V>
 linear_soa<K, V>::result
 linear_soa<K, V>::remove(K k)
 {
-	uint64_t slot;
+	uint32_t slot;
 	++removes;
 	if (probe(k, &slot, REMOVE)) {
 		settomb(slot);
@@ -295,7 +294,7 @@ template<typename K,typename V>
 void
 linear_soa<K,V>::cluster_len(std::map<int,int> *clust) const
 {
-	uint64_t first_nonfull, last_nonfull, p=0;
+	uint32_t first_nonfull, last_nonfull, p=0;
 
 	while (full(p)) ++p;
 	first_nonfull = last_nonfull = p;
@@ -318,9 +317,9 @@ template<typename K, typename V>
 void
 linear_soa<K,V>::shift_distance(std::map<int,int> *disp) const
 {
-	for(uint64_t p = 0; p < buckets; ++p)
+	for(uint32_t p = 0; p < buckets; ++p)
 		if (full(p)) {
-			uint64_t h = hash(key(p));
+			uint32_t h = hash(key(p));
 			int d = (p > h ? p - h : buckets - h + p);
 			(*disp)[d]++;
 		}

@@ -22,7 +22,7 @@ next_prime(size_t n)
 	if (n==2) return 3;
 
 	for(size_t km=m+5, kp=m+1; ; km+=6, kp+=6) {
-		if (is_prime(kp)) return kp;
+		if (is_prime(kp) && kp>n) return kp;
 		if (is_prime(km)) return km;
 	}
 }

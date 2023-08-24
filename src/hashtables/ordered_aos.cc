@@ -7,7 +7,7 @@
 template class ordered_aos<>;
 
 template<typename K, typename V>
-ordered_aos<K, V>::ordered_aos(uint64_t b)
+ordered_aos<K, V>::ordered_aos(uint32_t b)
 {
 	prime_index = 0;
 	while(b > primes[prime_index])
@@ -16,7 +16,7 @@ ordered_aos<K, V>::ordered_aos(uint64_t b)
 	table = new record[b];
 	if (!table) std::cerr << "Couldn't allocate\n";
 
-	for(uint64_t i=0; i<b; i++)
+	for(uint32_t i=0; i<b; i++)
 		table[i].state = EMPTY;
 
 	max_load_factor = 0.5;
@@ -42,31 +42,30 @@ ordered_aos<K, V>::~ordered_aos()
 }
 
 template<typename K, typename V>
-uint64_t
+uint32_t
 ordered_aos<K, V>::hash(K k) const
 {
-	int64_t r = k % buckets;
-	return (r<0) ? r+buckets : r;
+	return (uint32_t)(((uint64_t)k * (uint64_t)buckets) >> 32);
 }
 
 template<typename K, typename V>
 void
-ordered_aos<K, V>::resize(uint64_t b)
+ordered_aos<K, V>::resize(uint32_t b)
 {
-	uint64_t oldbuckets = buckets;
+	uint32_t oldbuckets = buckets;
 	record *oldtable = table;
 
 	std::cerr << "resize(): rehashing into " << b << " buckets\n";
 
 	table = new record[b];
 	if (!table) std::cerr << "couldn't allocate for resize\n";
-	for(uint64_t i=0; i<b; ++i)
+	for(uint32_t i=0; i<b; ++i)
 		table[i].state = EMPTY;
 	records = 0;
 	tombs = 0;
 	buckets = b;
 
-	for(uint64_t i=0; i<oldbuckets; ++i) {
+	for(uint32_t i=0; i<oldbuckets; ++i) {
 		if (oldtable[i].state == FULL)
 			insert(oldtable[i].key, oldtable[i].value, true);
 	}
@@ -77,12 +76,12 @@ ordered_aos<K, V>::resize(uint64_t b)
 
 template<typename K, typename V>
 bool
-ordered_aos<K, V>::probe(K k, uint64_t *slot, optype operation, bool* wrapped)
+ordered_aos<K, V>::probe(K k, uint32_t *slot, optype operation, bool* wrapped)
 {
-	const uint64_t h = hash(k);
-	uint64_t miss = 1;
+	const uint32_t h = hash(k);
+	uint64_t miss = 0;
 	bool res = false;
-	uint64_t s = std::max(h, table_head);
+	uint32_t s = std::max(h, table_head);
 
 	switch(operation) {
 	case INSERT:
@@ -125,12 +124,12 @@ ordered_aos<K, V>::probe(K k, uint64_t *slot, optype operation, bool* wrapped)
 
 // find the end of the cluster, then slide records 1 to the right
 template<typename K, typename V>
-uint64_t
-ordered_aos<K, V>::shift(uint64_t start)
+uint32_t
+ordered_aos<K, V>::shift(uint32_t start)
 {
 	using std::memmove;
-	const uint64_t last = buckets-1;
-	uint64_t end = start;
+	const uint32_t last = buckets-1;
+	uint32_t end = start;
 
 	do
 		if (++end > last) end = 0;
@@ -154,7 +153,7 @@ template<typename K, typename V>
 ordered_aos<K, V>::result
 ordered_aos<K, V>::insert(K k, V v, bool rebuilding)
 {
-	uint64_t slot;
+	uint32_t slot;
 	bool wrapped=false;
 
 	if (records>=buckets) {
@@ -170,7 +169,7 @@ ordered_aos<K, V>::insert(K k, V v, bool rebuilding)
 	}
 
 	if (!empty(slot)) {
-		uint64_t end = shift(slot);
+		uint32_t end = shift(slot);
 		if (((end < slot) || wrapped) && end >= table_head) ++table_head;
 		if (!rebuilding) {
 			if (end >= slot)
@@ -206,7 +205,7 @@ template<typename K, typename V>
 bool
 ordered_aos<K, V>::query(K k, V *v)
 {
-	uint64_t slot;
+	uint32_t slot;
 	++queries;
 
 	if (probe(k, &slot, QUERY)) {
@@ -222,7 +221,7 @@ template<typename K, typename V>
 ordered_aos<K, V>::result
 ordered_aos<K, V>::remove(K k)
 {
-	uint64_t slot;
+	uint32_t slot;
 	++removes;
 
 	if (probe(k, &slot, REMOVE)) {
@@ -250,7 +249,7 @@ ordered_aos<K, V>::rebuild()
 	std::vector<record> overflow;
 
 	// temporarily save the table overflow
-	for(uint64_t p = 0; p < table_head; ++p) {
+	for(uint32_t p = 0; p < table_head; ++p) {
 		if (full(p)) {
 			overflow.push_back(table[p]);
 			--records;
@@ -260,7 +259,7 @@ ordered_aos<K, V>::rebuild()
 	table_head = 0;
 
 	// slide elements left
-	for(uint64_t p = 0, q = 0; p < buckets; ++p, ++q) {
+	for(uint32_t p = 0, q = 0; p < buckets; ++p, ++q) {
 		if (!full(p)) {
 			while (q < buckets && !full(q)) {
 				table[q].state = EMPTY;
@@ -268,7 +267,7 @@ ordered_aos<K, V>::rebuild()
 			}
 			if (q == buckets) break;
 
-			uint64_t h = hash(key(q));
+			uint32_t h = hash(key(q));
 			if (p < h) p = h;
 			if (p != q) {
 				table[p] = table[q];
@@ -373,9 +372,9 @@ template<typename K, typename V>
 void
 ordered_aos<K, V>::cluster_len(std::map<int,int> *clust) const
 {
-	uint64_t last_empty, last_tomb;
+	uint32_t last_empty, last_tomb;
 	last_empty = last_tomb = table_head;
-	for(uint64_t p = table_head; p < buckets; ++p) {
+	for(uint32_t p = table_head; p < buckets; ++p) {
 		if (!full(p)) {
 			int dist = std::min(p - last_empty, p - last_tomb);
 			if (dist > 1) (*clust)[dist-1]++;
@@ -385,7 +384,7 @@ ordered_aos<K, V>::cluster_len(std::map<int,int> *clust) const
 	}
 
 	// keep counting once we wrap the table
-	for(uint64_t p = 0; p < table_head; ++p) {
+	for(uint32_t p = 0; p < table_head; ++p) {
 		if (!full(p)) {
 			// detect if the cluster wrapped
 			int x = last_empty >= table_head ?
@@ -406,9 +405,9 @@ template<typename K, typename V>
 void
 ordered_aos<K, V>::shift_distance(std::map<int,int> *disp) const
 {
-	for(uint64_t p = 0; p < buckets; ++p) {
+	for(uint32_t p = 0; p < buckets; ++p) {
 		if (full(p)) {
-			uint64_t h = hash(key(p));
+			uint32_t h = hash(key(p));
 			int d = (p >= table_head ? p - h : buckets - h + p);
 			assert(d >= 0); // invariant broken
 			(*disp)[d]++;
@@ -421,7 +420,7 @@ template<typename K, typename V>
 bool
 ordered_aos<K, V>::check_ordering()
 {
-	uint64_t p = table_head, q;
+	uint32_t p = table_head, q;
 	bool wrapped = false;
 
 	while (table[p].state != FULL) ++p;
@@ -451,7 +450,7 @@ template<typename K, typename V>
 void
 ordered_aos<K, V>::dump()
 {
-	for(size_t i=0; i<buckets; i++) {
+	for(uint32_t i=0; i<buckets; i++) {
 		if ((i!=0) && (i%10 == 0)) std::cout << "\n";
 		std::cout.width(4);
 		std::cout << i << ':';

@@ -15,8 +15,6 @@
 #include "primes.h"
 #include "graveyard.h"
 
-#define KEY_MAX 2000000000L
-
 //#define QUIET
 
 using std::chrono::duration;
@@ -58,39 +56,46 @@ class rebuildtester {
 	// generate random numbers and insert into the table.
 	// maintain list of all keys inserted until target load factor reached
 	void
-	loadtable(hashtable *ht, std::vector<int> *keys, double lf)
+	loadtable(hashtable *ht, std::vector<uint32_t> *keys, double lf)
 	{
 		double start = ht->load_factor();
 		int interval = (lf - ht->load_factor()) * ht->table_size() / 20;
 		int stat_timer = interval;
 		uint64_t k;
 
-		uniform_int_distribution<uint64_t> data(0,KEY_MAX);
-#ifndef QUIET
-		cout << "Load " << ht->load_factor() << " -> " << lf << "\n";
-#endif 
-		while (ht->load_factor() < lf) {
+		uniform_int_distribution<uint32_t> data(0,UINT32_MAX);
+		cout << "Loading: " << ht->load_factor() << " -> "
+		     << lf << "\n";
+
+		while(ht->load_factor() < lf) {
 			k = data(rng);
 			using result = hashtable::result;
 			result r = ht->insert(k, k/2);
-			if (r == result::SUCCESS || r == result::REBUILD)
+			switch(r) {
+			case result::SUCCESS:
 				keys->push_back(k);
-			if (r == result::REBUILD)
-				loadrebuild(ht);
+				break;
+			case result::REBUILD:
+				keys->push_back(k);
+				ht->rebuild();
+				break;
+			case result::FULLTABLE: // this should never happen
+				std::cerr << "Table full!\n";
+				return;
+			default:
+				break;
+			}
 
-#ifndef QUIET
 			if (--stat_timer == 0) {
 				stat_timer = interval;
 				cout << "\r["
-				     << 100.0*(ht->load_factor() - start)
+				     << 100 * (ht->load_factor() - start)
 				        / (lf - start)
 				     << "%]   " << std::flush;
 			}
-#endif
 		}
-#ifndef QUIET
+
 		cout << "\r[done]     \n";
-#endif
 	}
 
 	void
@@ -98,7 +103,7 @@ class rebuildtester {
 	{
 		int op, i, k;
 		int ins = 0, del = 0;
-		uniform_int_distribution<uint64_t> data(0,KEY_MAX);
+		uniform_int_distribution<uint64_t> data(0,UINT32_MAX);
 		uniform_int_distribution<int> operation(0,99);
 		
 		// randomly insert or delete until the rebuild window is hit

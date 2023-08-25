@@ -7,6 +7,7 @@
 using std::cerr, std::size_t;
 
 template class ordered_soa<>;
+template class ordered_soa<uint64_t, int>;
 
 template<typename K, typename V>
 ordered_soa<K, V>::ordered_soa(uint32_t b)
@@ -184,6 +185,7 @@ ordered_soa<K, V>::insert(K k, V v, bool rebuilding)
 
 	if (records>=buckets) {
 		failed_inserts++;
+		if (rebuilding) cerr << "Table full during a rebuild!\n";
 		return result::FULLTABLE;
 	}
 
@@ -191,6 +193,9 @@ ordered_soa<K, V>::insert(K k, V v, bool rebuilding)
 	if (!probe(k, &slot, ins_type, &wrapped)) {
 		++failed_inserts;
 		++duplicates;
+		if (rebuilding) {
+			cerr << "A duplicate occurred during rebuild!\n";
+		}
 		return result::DUPLICATE;
 	}
 
@@ -240,6 +245,8 @@ ordered_soa<K, V>::query(K k, V *v)
 		return true;
 	}
 
+	cerr << "Missed k=" << k << ", h(k)=" << hash(k)
+		<< ", last probed slot=" << slot << "\n";
 	++failed_queries;
 	return false;
 }

@@ -21,25 +21,32 @@ int main(int argc, char **argv)
 		                      10'000'000, 50'000'000,
 		                      100'000'000, 500'000'000,
 		                      1'000'000'000 };
-	const vector<int> testxs{1000};
-	const vector<uint64_t> testbs{3'000'000};
+	const vector<int> testxs{400};
+	const vector<uint64_t> testbs{100'000'000};
 
 	const auto &xs = fullxs;
 	const auto &bs = fullbs;
 	const int nq = 1'000'000;       // queries per test
 	const int nt = 10;              // number of tests to average over
 
-	std::ofstream f("querybench_all");
-	f << querytester<graveyard_soa<>>(rng, xs, bs, nq, nt, 0);
-	f << querytester<graveyard_aos<>>(rng, xs, bs, nq, nt, 0);
-	f << querytester<ordered_soa<>>(rng, xs, bs, nq, nt, 0);
-	f << querytester<ordered_aos<>>(rng, xs, bs, nq, nt, 0);
-	f << querytester<linear_soa<>>(rng, xs, bs, nq, nt, 0);
-	f << querytester<linear_aos<>>(rng, xs, bs, nq, nt, 0);
-	f.close();
+	{ std::ofstream f("querybench_graveyard_soa");
+	  f << querytester<graveyard_soa<>>(rng, xs, bs, nq, nt, 0); }
+/*
+	{ std::ofstream f("querybench_graveyard_aos");
+	  f << querytester<graveyard_aos<>>(rng, xs, bs, nq, nt, 0); }
 
-	cout << "Complete\n";
+	{ std::ofstream f("querybench_ordered_soa");
+	  f << querytester<ordered_soa<>>(rng, xs, bs, nq, nt, 0); }
 
+	{ std::ofstream f("querybench_ordered_aos");
+	  f << querytester<ordered_aos<>>(rng, xs, bs, nq, nt, 0); }
+
+	{ std::ofstream f("querybench_linear_soa");
+	  f << querytester<linear_soa<>>(rng, xs, bs, nq, nt, 0); }
+
+	{ std::ofstream f("querybench_linear_aos");
+	  f << querytester<linear_aos<>>(rng, xs, bs, nq, nt, 0); }
+*/
 	return 0;
 }
 

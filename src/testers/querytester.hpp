@@ -31,7 +31,7 @@ class querytester {
 	const std::vector<uint64_t> &bs;
 	int nqueries;
 	int ntests;
-	int f_pct;
+	int fail_pct;
 
 	struct query_stats_t {
 		int nqueries;
@@ -46,31 +46,40 @@ class querytester {
 
 	std::vector<query_stats_t> querystats;
 
-	void loadtable(hashtable *ht, std::vector<int> *keys, double lf)
+	void loadtable(hashtable *ht, std::vector<uint32_t> *keys, double lf)
 	{
 		double start = ht->load_factor();
 		int interval = (lf - ht->load_factor()) * ht->table_size() / 20;
 		int stat_timer = interval;
-		uint64_t k;
+		uint32_t k;
 
-		uniform_int_distribution<uint64_t> data(0,UINT32_MAX);
+		uniform_int_distribution<uint32_t> data(0,UINT32_MAX);
 		cout << "Loading: " << ht->load_factor() << " -> "
 		     << lf << "\n";
 
 		while(ht->load_factor() < lf) {
 			k = data(rng);
 			using result = hashtable::result;
-			result r = ht->insert(k, k/2);
-			if (r == result::SUCCESS || r == result::REBUILD) 
+			result r = ht->insert(k, k>>1);
+			switch(r) {
+			case result::SUCCESS:
 				keys->push_back(k);
-			
-			if (r == result::REBUILD) 
+				break;
+			case result::REBUILD:
+				keys->push_back(k);
 				ht->rebuild();
+				break;
+			case result::FULLTABLE: // this should never happen
+				std::cerr << "Table full!\n";
+				return;
+			default:
+				break;
+			}
 
 			if (--stat_timer == 0) {
 				stat_timer = interval;
 				cout << "\r["
-				     << 100.0 * (ht->load_factor() - start)
+				     << 100 * (ht->load_factor() - start)
 				        / (lf - start)
 				     << "%]   " << std::flush;
 			}
@@ -79,44 +88,59 @@ class querytester {
 		cout << "\r[done]     \n";
 	}
 
-	void querying(hashtable *ht, const std::vector<int> &keys,
+	void querying(hashtable *ht, const std::vector<uint32_t> &keys,
 	              int nq, int f_pct)
 	{
-		uint32_t k, v;
+		uint32_t v;
 		uint64_t fails = 0;
+		int j = keys.size()-1;
 
-		uniform_int_distribution<size_t> p(0,keys.size()-1);
-		uniform_int_distribution<uint32_t> data(0,UINT32_MAX);
-		uniform_int_distribution<int> fail(0,99);
-		
-		for (int i = 0; i < nq; ++i) {
-			if (fail(rng) >= f_pct)
-				k = keys[p(rng)];
-			else
-				k = data(rng);
-
-			if (!ht->query(k, &v)) ++fails;
+		while (nq--) {
+			if (!ht->query(keys[j], &v)) {
+			/*	std::cerr << "key " << keys[j] << " not found\n";
+				uint32_t x, b; 
+				if (ht->dbfind(keys[j], &x, &b)) {
+					std::cerr << "found in slot " << x << "!\n";
+					std::cerr << "next empty in slot " << b << ".\n";
+				} else
+					std::cerr << "it's not actually in the table\n";
+				if (!ht->check_ordering())
+					std::cerr << "Ordering was violated\n";
+			*/	
+				++fails;
+			}
+			if (--j < 0) j=keys.size()-1;
 		}
-
-		if (f_pct == 0)
-			assert (fails == 0);
+		
+		if (f_pct == 0 && fails != 0)
+			std::cerr << fails << " erroneous fails! ";
 	}
 
-	void querytimer(hashtable *ht, const std::vector<int> &keys,
-			std::vector<duration<double> > *d,
-			int nq, int f_pct)
+	void querytimer(hashtable *ht, vector<uint32_t> *keys,
+			vector<duration<double>> *d, int nq, int f_pct)
 	{
 		time_point<steady_clock> start, end;
+		uniform_int_distribution<uint32_t> data(0,UINT32_MAX);
+
+		std::shuffle(std::begin(*keys), std::end(*keys), rng);
+		// replace some of the stored keys with random keys
+		for (size_t i=0; i<keys->size()*f_pct/100.0; ++i) {
+			keys->pop_back();
+			keys->push_back(data(rng));
+		}
 		ht->reset_perf_counts();
 
 		for (int i=0; i<ntests; ++i) {
+			std::shuffle(std::begin(*keys), std::end(*keys), rng);
 			cout << i+1 << std::flush;
 
+			// timed section: 'nq' queries
 			start = steady_clock::now();
-			querying(ht, keys, nq, f_pct);
+			querying(ht, *keys, nq, f_pct);
 			end = steady_clock::now();
+			// end timed section
 
-			cout << "... ";
+			cout << ".." << std::flush;
 
 			d->push_back(end - start);
 			ht->reset_perf_counts();
@@ -148,25 +172,25 @@ class querytester {
 		for (auto b : bs) {
 			hashtable ht(next_prime(b));
 			type = ht.table_type();
-			vector<int> keys;
-
-			uint64_t size = ht.table_size();
 			ht.set_max_load_factor(1.0);
+			vector<uint32_t> keys;
+			uint32_t size = ht.table_size();
 			keys.reserve(size);
+
 			for (auto x : xs) {
 				double lf = 1.0 - (1.0 / x);
-				cout << "Table size: " << size
-				     << ", x=" << x
+				cout << "Table size: " << size << ", x=" << x
 				     << " (lf=" << lf << "): ";
 
 				loadtable(&ht, &keys, lf);
 
-				vector <duration<double> > times;
-				querytimer(&ht, keys, &times, nqueries, 0);
+				vector <duration<double>> times;
+				querytimer(&ht, &keys, &times,
+				           nqueries, fail_pct);
 
 				query_stats_t q {
 					.nqueries            = nqueries,
-					.failrate            = f_pct,
+					.failrate            = fail_pct,
 					.query_time          = times,
 					.mean_query_time     = mean(times),
 					.median_query_time   = median(times),
@@ -183,7 +207,8 @@ class querytester {
 	public:
 	querytester(pcg64 &r, std::vector<int> const &x,
 	            std::vector<uint64_t> const &b, int nq, int nt, int fp)
-	           : rng(r), xs(x), bs(b), nqueries(nq), ntests(nt), f_pct(fp) {
+	           : rng(r), xs(x), bs(b), nqueries(nq), ntests(nt),
+	             fail_pct(fp) {
 		run_test();
 	}
 

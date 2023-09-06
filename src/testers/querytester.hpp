@@ -112,8 +112,11 @@ class querytester {
 			if (--j < 0) j=keys.size()-1;
 		}
 		
-		if (f_pct == 0 && fails != 0)
+		if (f_pct == 0 && fails != 0) {
 			std::cerr << fails << " erroneous fails! ";
+			if (!ht->check_ordering())
+				std::cerr << "Ordering was violated\n";
+		}
 	}
 
 	void querytimer(hashtable *ht, vector<uint32_t> *keys,

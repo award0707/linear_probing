@@ -17,82 +17,95 @@ pcg64 rng(seed_source);
 int main(int argc, char **argv)
 {
 	const int x = 1000;      // load factor 1-1/x
-	const int i = 100;       // # of data points for profiling
+	const int i = 250;       // # of data points for profiling
 	std::vector<uint64_t> ns = {
-//		10'000'000,
-//		25'000'000,
-//		50'000'000,
-//		100'000'000,
-//		250'000'000,
-//		500'000'000,
-//		750'000'000,
+		10'000'000,
+		25'000'000,
+		50'000'000,
+		100'000'000,
+		250'000'000,
+		500'000'000,
+		750'000'000,
 		1'000'000'000,
 	};
 
 	// array of structures
-	{ std::ofstream f("loadbench_graveyard_aos");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<graveyard_aos<>>(rng,n,x,i,true); }
+	for (auto n : ns) {
+		std::ofstream f("loadbench_graveyard_aos_"
+		                + std::to_string(n/1000000));
+		f << loadtester<graveyard_aos<>>(rng,n,x,i,true);
+	}
 
-	{ std::ofstream f("loadbench_ordered_aos");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<ordered_aos<>>(rng,n,x,i,true); }
+	for (auto n : ns) {
+		std::ofstream f("loadbench_ordered_aos_"
+		                + std::to_string(n/1000000));
+		f << loadtester<ordered_aos<>>(rng,n,x,i,true);
+	}
 
-	{ std::ofstream f("loadbench_linear_aos");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<linear_aos<>>(rng,n,x,i,true); }
+	for (auto n : ns) {
+		std::ofstream f("loadbench_linear_aos_"
+		                + std::to_string(n/1000000));
+		f << loadtester<linear_aos<>>(rng,n,x,i,true);
+	}
 
 	// structure of arrays
-	{ std::ofstream f("loadbench_graveyard_soa");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<graveyard_soa<>>(rng,n,x,i,true); }
+	for (auto n : ns) {
+		std::ofstream f("loadbench_graveyard_soa_"
+		                + std::to_string(n/1000000));
+		f << loadtester<graveyard_soa<>>(rng,n,x,i,true);
+	}
 
-	{ std::ofstream f("loadbench_ordered_soa");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<ordered_soa<>>(rng,n,x,i,true); }
+	for (auto n : ns) {
+		std::ofstream f("loadbench_ordered_soa_"
+		                + std::to_string(n/1000000));
+		f << loadtester<ordered_soa<>>(rng,n,x,i,true);
+	}
 
-	{ std::ofstream f("loadbench_linear_soa");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<linear_soa<>>(rng,n,x,i,true); }
+	for (auto n : ns) {
+		std::ofstream f("loadbench_linear_soa_"
+		                + std::to_string(n/1000000));
+		f << loadtester<linear_soa<>>(rng,n,x,i,true);
+	}
 
-	// aos, no rebuilds during build
-	{ std::ofstream f("loadbench_graveyard_aos_norebuild");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<graveyard_aos<>>(rng,n,x,i,false); }
+	// no rebuild
 
-	{ std::ofstream f("loadbench_ordered_aos_norebuild");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<ordered_aos<>>(rng,n,x,i,false); }
+	// aos
+	for (auto n : ns) {
+		std::ofstream f("loadbench_graveyard_aos_norebuild_"
+		                + std::to_string(n/1000000));
+		f << loadtester<graveyard_aos<>>(rng,n,x,i,false);
+	}
 
-	{ std::ofstream f("loadbench_linear_aos_norebuild");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<linear_aos<>>(rng,n,x,i,false); }
+	for (auto n : ns) {
+		std::ofstream f("loadbench_ordered_aos_norebuild_"
+		                + std::to_string(n/1000000));
+		f << loadtester<ordered_aos<>>(rng,n,x,i,false);
+	}
 
-	// soa, no rebuilds during build
-	{ std::ofstream f("loadbench_graveyard_soa_norebuild");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<graveyard_soa<>>(rng,n,x,i,false); }
+	for (auto n : ns) {
+		std::ofstream f("loadbench_linear_aos_norebuild_"
+		                + std::to_string(n/1000000));
+		f << loadtester<linear_aos<>>(rng,n,x,i,false);
+	}
 
-	{ std::ofstream f("loadbench_ordered_soa_norebuild");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<ordered_soa<>>(rng,n,x,i,false); }
+	// soa
+	for (auto n : ns) {
+		std::ofstream f("loadbench_graveyard_soa_norebuild_"
+		                + std::to_string(n/1000000));
+		f << loadtester<graveyard_soa<>>(rng,n,x,i,false);
+	}
 
-	{ std::ofstream f("loadbench_linear_soa_norebuild");
-	  for (auto n : ns)
-		f << "------------------------------------------\n"
-		  << loadtester<linear_soa<>>(rng,n,x,i,false); }
+	for (auto n : ns) {
+		std::ofstream f("loadbench_ordered_soa_norebuild_"
+		                + std::to_string(n/1000000));
+		f << loadtester<ordered_soa<>>(rng,n,x,i,false);
+	}
 
+	for (auto n : ns) {
+		std::ofstream f("loadbench_linear_soa_norebuild_"
+		                + std::to_string(n/1000000));
+		f << loadtester<linear_soa<>>(rng,n,x,i,false);
+	}
 	return 0;
 }
 

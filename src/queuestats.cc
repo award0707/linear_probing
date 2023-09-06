@@ -12,7 +12,6 @@
 #include "primes.h"
 #include "graveyard.h"
 
-#define KEY_MAX 2000000000L
 #define NTESTS 10
 
 pcg_extras::seed_seq_from<std::random_device> seed_source;
@@ -37,14 +36,14 @@ struct queue_stats_t {
 
 // generate random numbers and insert into the table.
 // maintain list of all keys inserted until target load factor reached
-void loadtable(hashtable *ht, std::vector<int> *keys, double lf)
+void loadtable(hashtable *ht, std::vector<uint32_t> *keys, double lf)
 {
 	double start = ht->load_factor();
 	int interval = (lf - ht->load_factor()) * ht->table_size() / 20;
 	int stat_timer = interval;
 	uint64_t k;
 
-	uniform_int_distribution<uint64_t> data(0,KEY_MAX);
+	uniform_int_distribution<uint64_t> data(0,UINT32_MAX);
 	cout << "Loading: " << ht->load_factor() << " -> " << lf << "\n";
 
 	while(ht->load_factor() < lf) {
@@ -63,14 +62,14 @@ void loadtable(hashtable *ht, std::vector<int> *keys, double lf)
 		}
 	}
 
-	cout << "\r[done]     \n";
+	cout << "\r[done]     ";
 }
 
-void floating(hashtable *ht, std::vector<int> *keys)
+void floating(hashtable *ht, std::vector<uint32_t> *keys)
 {
 	int op, i, k;
 	int ins = 0, del = 0;
-	uniform_int_distribution<uint64_t> data(0,KEY_MAX);
+	uniform_int_distribution<uint32_t> data(0,UINT32_MAX);
 	uniform_int_distribution<int> operation(0,99);
 	
 	// randomly insert or delete until the rebuild window is hit
@@ -97,18 +96,19 @@ void floating(hashtable *ht, std::vector<int> *keys)
 			if (r != res::FAILURE) {
 				std::swap((*keys)[i], keys->back());
 				keys->pop_back();
+			} else {
+				std::cerr << "Remove failed!\n";
 			}
 			++del;
 		}
 	} while (r != res::REBUILD);
 }
 
-void queuetest(hashtable *ht, std::vector<int> *keys, std::vector<int> *mrq)
+void queuetest(hashtable *ht, std::vector<uint32_t> *keys, std::vector<int> *mrq)
 {
 	ht->rebuild();   // start at the top of the next rebuild window
 	ht->reset_perf_counts();
 
-	cout << "Float and rebuild: ";
 	for (int i=0; i<NTESTS; ++i) {
 		cout << i+1 << std::flush;
 		floating(ht, keys);
@@ -167,7 +167,7 @@ int main(int argc, char **argv)
 	vector<queue_stats_t> queuestats;
 	vector<int> xs{2,3,4,5,6,7,8,9,10,15,20,25,
 	               30,40,50,60,70,80,90,100,200,400,700,1000};
-	vector<uint64_t> bs { 10'000, 100'000, 500'000,
+	vector<uint32_t> bs { 10'000, 100'000, 500'000,
 	                      1'000'000, 5'000'000,
 	                      10'000'000, 50'000'000,
 	                      100'000'000, 500'000'000,
@@ -175,7 +175,7 @@ int main(int argc, char **argv)
 	
 	for (auto b : bs) {
 		hashtable ht(next_prime(b));
-		vector<int> keys;
+		vector<uint32_t> keys;
 
 		uint64_t size = ht.table_size();
 		keys.reserve(size);
@@ -205,7 +205,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	std::fstream f("graveyard_queuestats");
+	std::fstream f("graveyard_maxqueue");
 	dump_queue_stats(queuestats, f);
 
 	return 0;

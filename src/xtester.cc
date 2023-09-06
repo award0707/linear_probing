@@ -5,6 +5,7 @@
 #include "util.h"
 
 #include "testers/querytester.hpp"
+#include "testers/floattester.hpp"
 #include "graveyard.h"
 #include "ordered.h"
 #include "linear.h"
@@ -22,23 +23,23 @@ int main(int argc, char **argv)
 
 	const int nq = 1'000'000;       // queries per test
 	const int nt = 10;              // number of tests to average over
-
+/*
 	std::ofstream f("x_querytester_out");
-	f << querytester<graveyard_soa<int, int> >(rng, xs, bs, nq, nt);
-	f << querytester<graveyard_aos<int, int> >(rng, xs, bs, nq, nt);
-	f << querytester<ordered_soa<int, int> >(rng, xs, bs, nq, nt);
-	f << querytester<ordered_aos<int, int> >(rng, xs, bs, nq, nt);
-	f << querytester<linear_soa<int, int> >(rng, xs, bs, nq, nt);
-	f << querytester<linear_aos<int, int> >(rng, xs, bs, nq, nt);
+	f << querytester<graveyard_soa<> >(rng, xs, bs, nq, nt,0);
+	f << querytester<graveyard_aos<> >(rng, xs, bs, nq, nt,0);
+	f << querytester<ordered_soa<> >(rng, xs, bs, nq, nt,0);
+	f << querytester<ordered_aos<> >(rng, xs, bs, nq, nt,0);
+	f << querytester<linear_soa<> >(rng, xs, bs, nq, nt,0);
+	f << querytester<linear_aos<> >(rng, xs, bs, nq, nt,0);
 	f.close();
-
+*/
 	std::ofstream f("x_floattester_out");
-	f << querytester<graveyard_soa<int, int> >(rng, xs, bs, nq, nt);
-	f << querytester<graveyard_aos<int, int> >(rng, xs, bs, nq, nt);
-	f << querytester<ordered_soa<int, int> >(rng, xs, bs, nq, nt);
-	f << querytester<ordered_aos<int, int> >(rng, xs, bs, nq, nt);
-	f << querytester<linear_soa<int, int> >(rng, xs, bs, nq, nt);
-	f << querytester<linear_aos<int, int> >(rng, xs, bs, nq, nt);
+	f << floattester<graveyard_soa<>>(rng, xs, bs, nq, nt);
+	f << floattester<graveyard_aos<>>(rng, xs, bs, nq, nt);
+	f << floattester<ordered_soa<>>(rng, xs, bs, nq, nt);
+	f << floattester<ordered_aos<>>(rng, xs, bs, nq, nt);
+	f << floattester<linear_soa<>>(rng, xs, bs, nq, nt);
+	f << floattester<linear_aos<>>(rng, xs, bs, nq, nt);
 	f.close();
 
 	cout << "Complete\n";

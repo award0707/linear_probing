@@ -53,35 +53,71 @@ class rebuildtester {
 		// because rebuilding really speeds up loading for graveyards
 	}
 
+	// make a set of keys for loading and floating ops, no duplicates
+	void
+	gen_testset(std::vector<uint32_t>* loadset, uint32_t n,
+	            std::vector<uint32_t>* testset,
+	            std::vector<uint8_t>* opset)
+	{
+		cout << "Generate test set\n";
+		loadset->reserve(UINT32_MAX);
+		for (uint32_t i = 0; i< UINT32_MAX; ++i)
+			loadset->push_back(i);
+
+		cout << "Loadset generated\n";
+		std::shuffle(std::begin(*loadset), std::end(*loadset), rng);
+
+		cout << "Loadset shuffled\n";
+
+		uint32_t idx = (nops/2) * ntests * xs.size();
+		testset->reserve(idx);
+		testset->insert(testset->end(),
+		                std::make_move_iterator(loadset->end() - idx),
+		                std::make_move_iterator(loadset->end()));
+
+		loadset->resize(n);
+		loadset->shrink_to_fit();
+
+		opset->reserve(nops);
+		for (int i = 0; i < nops; ++i)
+			opset->push_back(i & 1);
+		std::shuffle(std::begin(*opset), std::end(*opset), rng);
+
+		cout << "loadset=" << loadset->size() << ", testset=" << testset->size() << ", opset="<<opset->size()<<'\n';
+	}
+
 	// generate random numbers and insert into the table.
 	// maintain list of all keys inserted until target load factor reached
 	void
-	loadtable(hashtable *ht, std::vector<uint32_t> *keys, double lf)
+	loadtable(hashtable *ht, std::vector<uint32_t> *loadset,
+	          std::vector<uint32_t> *inserted, double lf)
 	{
 		double start = ht->load_factor();
-		int interval = (lf - ht->load_factor()) * ht->table_size() / 20;
+		int loadops = ht->table_size() * (lf - start);
+		int interval = loadops / 20;
 		int stat_timer = interval;
 		uint64_t k;
 
-		uniform_int_distribution<uint32_t> data(0,UINT32_MAX);
-		cout << "Loading: " << ht->load_factor() << " -> "
-		     << lf << "\n";
+		cout << "Load: " << start << " -> " << lf << "\n";
 
-		while(ht->load_factor() < lf) {
-			k = data(rng);
+		for (int i = 0; i < loadops; ++i) {
+			k = loadset->back();
+			loadset->pop_back();
 			using result = hashtable::result;
-			result r = ht->insert(k, k/2);
+			result r = ht->insert(k, k>>2);
 			switch(r) {
 			case result::SUCCESS:
-				keys->push_back(k);
+				inserted->push_back(k);
 				break;
 			case result::REBUILD:
-				keys->push_back(k);
-				ht->rebuild();
+				inserted->push_back(k);
+				loadrebuild(ht);
 				break;
 			case result::FULLTABLE: // this should never happen
 				std::cerr << "Table full!\n";
 				return;
+			case result::DUPLICATE: // this also shouldn't happen
+				std::cerr << "Duplicate found\n";
 			default:
 				break;
 			}
@@ -95,7 +131,7 @@ class rebuildtester {
 			}
 		}
 
-		cout << "\r[done]     \n";
+		cout << "\r[done]     , inserted=" << inserted->size() << "\n";
 	}
 
 	void

@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <vector>
 #include <map>
+#include <algorithm>
+#include <ranges>
 #include <random>
 
 #include "pcg_random.hpp"
@@ -27,6 +29,7 @@ class loadtester {
 	double target_lf;
 	int intervals;
 	bool loadrebuild;
+	std::vector<uint32_t> loadset;
 
 	struct stats_t {
 		// record stats at the end of each interval
@@ -128,9 +131,39 @@ class loadtester {
 		return o;
 	}
 
+	// make a set of keys for loading ops, no duplicates
+	void
+	gen_testset(uint32_t n)
+	{
+		std::cout << "Generate test set\n";
+		uint32_t *s = new uint32_t[UINT32_MAX];
+		for (uint32_t i = 0; i < UINT32_MAX; ++i)
+			s[i]=i;
+//		std::cout << "Loadset generated, shuffling...";
+//		std::shuffle(std::begin(loadset), std::end(loadset), rng);
+
+		//auto numbers = std::ranges::views::iota(0U, UINT32_MAX);
+		uint32_t end = UINT32_MAX;
+		loadset.reserve(n);
+		std::uniform_int_distribution<uint64_t> r(0,UINT64_MAX);
+		for (uint32_t i = 0; i < n; ++i) {
+			uint32_t idx = r(rng) % end;
+			loadset.push_back(s[idx]);
+			s[idx] = s[--end];
+		}
+
+		delete[] s;
+		std::cout << "done\n";
+
+		loadset.resize(n);
+		loadset.shrink_to_fit();
+	}
 
 	void run_test()
 	{
+		int insert_interval, stat_timer;
+		uint32_t k, idx;
+
 		ht.set_max_load_factor(1.0);	// disable automatic resizing
 
 		std::cout << "Table type " << ht.table_type()
@@ -138,27 +171,23 @@ class loadtester {
 		          << " (" << (double)ht.table_size_bytes() << " bytes)"
 		          << ", lf=" << target_lf << "\n";
 
-		const std::size_t max = std::numeric_limits<uint32_t>::max();
-		std::uniform_int_distribution<uint32_t> data(0,max);
-		std::vector<uint32_t> keys;
-		keys.reserve(ht.table_size());
+		gen_testset(ht.table_size());
 
-		int insert_interval = (ht.table_size() * target_lf) / intervals;
+		insert_interval = (ht.table_size() * target_lf) / intervals;
+		stat_timer = insert_interval;
 		opcount = 0;
+		idx = 0;
 
-		uint32_t k;
-		int stat_timer = insert_interval;
 		push_timing_data();
 		while(ht.load_factor() < target_lf) {
-			k = data(rng);
 			using result = hashtable::result;
+			k = loadset[idx++];
 			result r = ht.insert(k, k>>2);
 		//	if (opcount == 10000) {
 		//		std::cout << "put in " << k << ", " << k>>2
 		//			<< ": 
+			assert(r == result::SUCCESS || r == result::REBUILD);
 
-			if (r == result::SUCCESS || r == result::REBUILD)
-				keys.push_back(k);
 			if (r == result::REBUILD && loadrebuild)
 				ht.rebuild();
 

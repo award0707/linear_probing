@@ -55,8 +55,10 @@ class querytester {
 
 		uniform_int_distribution<uint32_t> data(0,UINT32_MAX);
 		cout << "Loading: " << ht->load_factor() << " -> "
-		     << lf << "\n";
+		     << lf << " [      %]";
 
+		std::ios old(nullptr);
+		old.copyfmt(cout);
 		while(ht->load_factor() < lf) {
 			k = data(rng);
 			using result = hashtable::result;
@@ -67,7 +69,9 @@ class querytester {
 				break;
 			case result::REBUILD:
 				keys->push_back(k);
+				cout << " REBUILD" << std::flush;
 				ht->rebuild();
+				cout << "\b\b\b\b\b\b\b\b" << std::flush;
 				break;
 			case result::FULLTABLE: // this should never happen
 				std::cerr << "Table full!\n";
@@ -78,14 +82,16 @@ class querytester {
 
 			if (--stat_timer == 0) {
 				stat_timer = interval;
-				cout << "\r["
+				cout << "\b\b\b\b\b\b\b\b"
+				     << std::setw(6) << std::fixed
+				     << std::setprecision(2)
 				     << 100 * (ht->load_factor() - start)
 				        / (lf - start)
-				     << "%]   " << std::flush;
+				     << "%]" << std::flush;
 			}
 		}
-
-		cout << "\r[done]     \n";
+		cout.copyfmt(old);
+		cout << "\b\b\b\b\b\b\b\bdone]         \n";
 	}
 
 	void querying(hashtable *ht, const std::vector<uint32_t> &keys,
@@ -97,16 +103,8 @@ class querytester {
 
 		while (nq--) {
 			if (!ht->query(keys[j], &v)) {
-			/*	std::cerr << "key " << keys[j] << " not found\n";
-				uint32_t x, b; 
-				if (ht->dbfind(keys[j], &x, &b)) {
-					std::cerr << "found in slot " << x << "!\n";
-					std::cerr << "next empty in slot " << b << ".\n";
-				} else
-					std::cerr << "it's not actually in the table\n";
-				if (!ht->check_ordering())
-					std::cerr << "Ordering was violated\n";
-			*/	
+				std::cerr << "key #" << j << ": "
+				          << keys[j] << " not found\n";
 				++fails;
 			}
 			if (--j < 0) j=keys.size()-1;
@@ -126,16 +124,18 @@ class querytester {
 		uniform_int_distribution<uint32_t> data(0,UINT32_MAX);
 
 		std::shuffle(std::begin(*keys), std::end(*keys), rng);
-		// replace some of the stored keys with random keys
-		for (size_t i=0; i<keys->size()*f_pct/100.0; ++i) {
-			keys->pop_back();
-			keys->push_back(data(rng));
-		}
+		// miss test: replace some of the stored keys with random keys
+		if (f_pct > 0) 
+			for (size_t i=0; i<keys->size()*f_pct/100.0; ++i) {
+				keys->pop_back();
+				keys->push_back(data(rng));
+			}
 		ht->reset_perf_counts();
+		ht->rebuild();
 
 		for (int i=0; i<ntests; ++i) {
 			std::shuffle(std::begin(*keys), std::end(*keys), rng);
-			cout << i+1 << std::flush;
+			//cout << i+1 << std::flush;
 
 			// timed section: 'nq' queries
 			start = steady_clock::now();
@@ -143,12 +143,12 @@ class querytester {
 			end = steady_clock::now();
 			// end timed section
 
-			cout << ".." << std::flush;
+			//cout << ".." << std::flush;
 
 			d->push_back(end - start);
 			ht->reset_perf_counts();
 		}
-		cout << std::endl;
+		cout << std::flush;
 	}
 
 	std::ostream& dump_query_stats(std::ostream &o = std::cout) const

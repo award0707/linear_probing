@@ -118,6 +118,7 @@ class graveyard_aos {
 		void dump();
 		bool disable_rebuilds;
 		bool check_ordering();
+		void debug_key_search(K k);
 };
 
 template <typename K = uint32_t,
@@ -238,17 +239,6 @@ class graveyard_soa {
 		void dump();
 		bool disable_rebuilds;
 		bool check_ordering();
-		bool dbfind(K k, uint32_t *v, uint32_t *breaker) {
-			for(uint32_t i=0; i<buckets; i++)
-				if (key(i) == k) {
-					*v = i;
-					uint32_t j = i;
-					while (!empty(j)) j++;
-					*breaker = j;
-					return true;
-				}
-			return false;
-		}
 };
 
 #endif

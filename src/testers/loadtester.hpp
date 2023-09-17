@@ -101,6 +101,7 @@ class loadtester {
 			<< setw(w) << t.count()
 			<< setw(w) << opcount / t.count() << "\n";
 
+		o.copyfmt(fmt);
 		return o;
 	}
 

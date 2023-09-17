@@ -525,6 +525,40 @@ graveyard_aos<K,V>::check_ordering()
 
 template<typename K, typename V>
 void
+graveyard_aos<K, V>::debug_key_search(K k)
+{
+	uint32_t x, b; 
+	bool found = false;
+
+	for(uint32_t i=0; i<buckets; i++)
+		if (key(i) == k) {
+			x = i;
+			uint32_t j = i;
+			while (!empty(j)) j--;
+			b = j;
+			found = true;
+			break;
+		}
+	
+	if (found) {
+		std::cerr << "found it in slot " << x << "!\n";
+		if (table[x].state == TOMB) {
+			std::cerr << "it is marked as a tombstone\n";
+		} else if (table[x].state == EMPTY) {
+			std::cerr << "it is marked empty\n";
+		}
+		std::cerr << "empty before it: " << b << ".\n";
+		std::cerr << "actual hash " << hash(k) << "\n";
+		std::cerr << "table head: " << table_head << "\n";
+	} else
+		std::cerr << "it's not actually in the table\n";
+
+	if (!check_ordering())
+		std::cerr << "Ordering was violated\n";
+}
+
+template<typename K, typename V>
+void
 graveyard_aos<K, V>::dump()
 {
 	for(uint32_t i=0; i<buckets; i++) {

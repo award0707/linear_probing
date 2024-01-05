@@ -99,7 +99,7 @@ class linear_aos {
 
 
 		void cluster_len(std::map<int,int> *clust) const;
-		void shift_distance(std::map<int,int> *disp) const;
+		void search_distance(std::map<int,int> *disp) const;
 
 		int get_rebuild_window() const { return rebuild_window; }
 		double load_factor() const { return (double)records/buckets; }
@@ -214,7 +214,7 @@ class linear_soa {
 
 
 		void cluster_len(std::map<int,int> *clust) const;
-		void shift_distance(std::map<int,int> *disp) const;
+		void search_distance(std::map<int,int> *disp) const;
 
 		int get_rebuild_window() const { return rebuild_window; }
 		double load_factor() const { return (double)records/buckets; }

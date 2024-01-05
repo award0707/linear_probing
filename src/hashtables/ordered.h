@@ -99,7 +99,7 @@ class ordered_aos {
 		                          bool verbose = true);
 
 		void cluster_len(std::map<int, int>*) const;
-		void shift_distance(std::map<int, int>*) const;
+		void search_distance(std::map<int, int>*) const;
 
 		int get_rebuild_window() const { return rebuild_window; }
 		double load_factor() const { return (double)records/buckets; }
@@ -217,7 +217,7 @@ class ordered_soa {
 		                          bool verbose = true);
 
 		void cluster_len(std::map<int, int>*) const;
-		void shift_distance(std::map<int, int>*) const;
+		void search_distance(std::map<int, int>*) const;
 
 		int get_rebuild_window() const { return rebuild_window; }
 		double load_factor() const { return (double)records/buckets; }

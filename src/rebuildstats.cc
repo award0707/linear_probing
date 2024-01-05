@@ -12,6 +12,9 @@
 pcg_extras::seed_seq_from<std::random_device> seed_source;
 pcg64 rng(seed_source);
 
+#define SOA
+#define GRAVEYARD
+
 int main(int argc, char **argv)
 {
 	const vector<int> fullxs{2,3,4,5,6,7,8,9,10,15,20,25,
@@ -21,22 +24,67 @@ int main(int argc, char **argv)
 		                      10'000'000, 50'000'000,
 		                      100'000'000, 500'000'000,
 		                      1'000'000'000 };
-	const vector<int> testx{2,3,4};
-	const vector<uint64_t> testb{100000, 200000};
+	const vector<int> quickxs{2,3,4};
+	const vector<uint64_t> quickbs{1'000'000};
 
 	const auto &xs = fullxs;
-	const auto &bs = fullbs;
-	const int nt = 5;              // number of tests to average over
+	const auto &bs = quickbs;
+	const int nt = 50;              // number of tests to average over
 
-	std::ofstream f("output_rebuildstats");
-	f << rebuildtester<graveyard_soa<int, int>>(rng, xs, bs, nt);
-	f << rebuildtester<graveyard_aos<int, int>>(rng, xs, bs, nt);
-	f << rebuildtester<ordered_soa<int, int>>(rng, xs, bs, nt);
-	f << rebuildtester<ordered_aos<int, int>>(rng, xs, bs, nt);
-	f << rebuildtester<linear_soa<int, int>>(rng, xs, bs, nt);
-	f << rebuildtester<linear_aos<int, int>>(rng, xs, bs, nt);
-	f.close();
+#ifdef SOA
+#       ifdef GRAVEYARD
+	for (auto b : bs) {
+		std::ofstream f(std::to_string(b/1000) +
+				"_graveyard_soa_rebuilds");
+		f << rebuildtester<graveyard_soa<>>
+			(rng, xs, vector<uint64_t>{b}, nt);
+	}
+#       endif
+#       ifdef ORDERED
+	for (auto b : bs) {
+		std::ofstream f(std::to_string(b/1000) +
+				"_ordered_soa_rebuilds");
+		f << rebuildtester<ordered_soa<>>
+			(rng, xs, vector<uint64_t>{b}, nt);
+	}
+#       endif
+#       ifdef LINEAR
+	for (auto b : bs) {
+		std::ofstream f(std::to_string(b/1000) +
+				"_linear_soa_rebuilds");
+		f << rebuildtester<linear_soa<>>
+			(rng, xs, vector<uint64_t>{b}, nt);
+	}
+#       endif
+#endif
 
+#ifdef AOS
+#       ifdef GRAVEYARD
+	for (auto b : bs) {
+		std::ofstream f(std::to_string(b/1000) +
+				"_graveyard_aos_rebuilds");
+		f << rebuildtester<graveyard_aos<>>
+			(rng, xs, vector<uint64_t>{b}, nt);
+	}
+#       endif
+#       ifdef ORDERED
+	for (auto b : bs) {
+		std::ofstream f(std::to_string(b/1000) +
+				"_ordered_aos_rebuilds");
+		f << rebuildtester<ordered_aos<>>
+			(rng, xs, vector<uint64_t>{b}, nt);
+	}
+
+#       endif
+#       ifdef LINEAR
+	for (auto b : bs) {
+		std::ofstream f(std::to_string(b/1000) +
+				"_linear_aos_rebuilds");
+		f << rebuildtester<linear_aos<>>
+			(rng, xs, vector<uint64_t>{b}, nt);
+	}
+#       endif
+#endif
 	cout << "Complete\n";
 
 	return 0;

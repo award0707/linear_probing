@@ -5,6 +5,7 @@
 #include "util.h"
 
 #include "testers/querytester.hpp"
+#include "testers/one_rb_querytester.hpp"
 #include "graveyard.h"
 #include "ordered.h"
 #include "linear.h"
@@ -29,8 +30,11 @@ int main(int argc, char **argv)
 	const int nq = 1'000'000;       // queries per test
 	const int nt = 10;              // number of tests to average over
 
-	{ std::ofstream f("querybench_graveyard_soa");
-	  f << querytester<graveyard_soa<>>(rng, xs, bs, nq, nt, 0); }
+	{ std::ofstream f("querybench_graveyard_aos");
+	  f << querytester<graveyard_aos<>>(rng, xs, bs, nq, nt, 0); }
+
+//	{ std::ofstream f("querybench_stoprebuilding_aos");
+//	  f << one_rb_querytester<graveyard_aos<>>(rng,xs,bs,nq,nt,0); }
 /*
 	{ std::ofstream f("querybench_graveyard_aos");
 	  f << querytester<graveyard_aos<>>(rng, xs, bs, nq, nt, 0); }

@@ -503,9 +503,9 @@ graveyard_soa<K,V>::cluster_len(std::map<int,int> *clust) const
 		if (!full(p)) {
 			// detect if the cluster wrapped
 			int x = last_empty >= table_head ?
-				(buckets - last_empty + p) : (p - last_empty);
+			        (buckets - last_empty + p) : (p - last_empty);
 			int y = last_tomb >= table_head ?
-				(buckets - last_tomb + p) : (p - last_tomb);
+			        (buckets - last_tomb + p) : (p - last_tomb);
 			int dist = std::min(x, y);
 			if (dist > 1) (*clust)[dist-1]++;
 			if (empty(p)) last_empty = p;
@@ -518,15 +518,15 @@ graveyard_soa<K,V>::cluster_len(std::map<int,int> *clust) const
 // i.e. the distance from a key's slot and the hash of that key
 template<typename K, typename V>
 void
-graveyard_soa<K,V>::shift_distance(std::map<int,int> *disp) const
+graveyard_soa<K,V>::search_distance(std::map<int,int> *disp) const
 {
 	for(uint32_t p = 0; p < buckets; ++p) {
 		if (full(p)) {
 			uint32_t h = hash(key(p));
 			int d = (p >= table_head ? p - h : buckets - h + p);
 			if (d < 0)
-				std::cerr << "Negative shift length at slot "
-				<< p << "!\n";
+				std::cerr << "Negative search distance at slot "
+				          << p << "!\n";
 			(*disp)[d]++;
 		}
 	 }

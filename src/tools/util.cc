@@ -1,19 +1,21 @@
 #include <iostream>
 #include <vector>
+#include <map>
 #include <chrono>
 #include <numeric>
 #include "util.h"
 
 using std::chrono::duration;
+using std::vector;
 
 double
-mean(vector<duration<double> > v)
+mean(vector<duration<double>> v)
 {
 	return (std::reduce(v.begin(), v.end()) / v.size()).count();
 }
 
 double
-median(vector<duration<double> > dv)
+median(vector<duration<double>> dv)
 {
 	double med;
 	vector<double> v;
@@ -31,6 +33,22 @@ median(vector<duration<double> > dv)
 
 	return med;
 }
+
+double
+mean(std::map<int,int> m)
+{
+	int count=0, sum=0;
+	for (std::map<int,int>::const_iterator it = m.begin();
+	     it != m.end();
+	     ++it) {
+		sum += it->first * it->second;
+		count += it->second;
+	}
+
+	return sum/(double)count;
+}
+
+
 
 std::ostream&
 operator<<(std::ostream& os, const std::vector<duration<double> >& v)

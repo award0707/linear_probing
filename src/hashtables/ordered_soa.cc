@@ -441,7 +441,7 @@ ordered_soa<K, V>::cluster_len(std::map<int,int> *clust) const
 // i.e. the distance from a key's slot and the hash of that key
 template<typename K, typename V>
 void
-ordered_soa<K, V>::shift_distance(std::map<int,int> *disp) const
+ordered_soa<K, V>::search_distance(std::map<int,int> *disp) const
 {
 	for(uint32_t p = 0; p < buckets; ++p) {
 		if (full(p)) {

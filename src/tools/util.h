@@ -3,14 +3,14 @@
 
 #include <iostream>
 #include <vector>
+#include <map>
 #include <chrono>
 
-using std::vector;
-using std::chrono::duration;
-
-double mean(vector<duration<double> >);
-double median(vector<duration<double> >);
-std::ostream& operator<<(std::ostream&, const vector<duration<double>>&);
-std::ostream& operator<<(std::ostream&, const vector<int>&);
+double mean(std::vector<std::chrono::duration<double> >);
+double median(std::vector<std::chrono::duration<double> >);
+double mean(std::map<int,int>);
+std::ostream& operator<<(std::ostream&,
+                         const std::vector<std::chrono::duration<double>>&);
+std::ostream& operator<<(std::ostream&, const std::vector<int>&);
 
 #endif

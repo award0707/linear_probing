@@ -15,8 +15,6 @@
 #include "primes.h"
 #include "graveyard.h"
 
-//#define QUIET
-
 using std::chrono::duration;
 using std::chrono::steady_clock;
 using std::chrono::time_point;
@@ -33,11 +31,8 @@ class rebuildtester {
 	int ntests;
 
 	struct rebuild_stats_t {
-		std::vector<duration<double>> ops_time;
 		std::vector<int> rebuild_windows;
 		std::vector<duration<double>> rebuild_time;
-		double mean_ops_time;
-		double median_ops_time;
 		double mean_rebuild_time;
 		double median_rebuild_time;
 		double alpha;
@@ -53,93 +48,48 @@ class rebuildtester {
 		// because rebuilding really speeds up loading for graveyards
 	}
 
-	// make a set of keys for loading and floating ops, no duplicates
-	void
-	gen_testset(std::vector<uint32_t>* loadset, uint32_t n,
-	            std::vector<uint32_t>* testset,
-	            std::vector<uint8_t>* opset)
-	{
-		cout << "Generate test set\n";
-		loadset->reserve(UINT32_MAX);
-		for (uint32_t i = 0; i< UINT32_MAX; ++i)
-			loadset->push_back(i);
-
-		cout << "Loadset generated\n";
-		std::shuffle(std::begin(*loadset), std::end(*loadset), rng);
-
-		cout << "Loadset shuffled\n";
-
-		uint32_t idx = (nops/2) * ntests * xs.size();
-		testset->reserve(idx);
-		testset->insert(testset->end(),
-		                std::make_move_iterator(loadset->end() - idx),
-		                std::make_move_iterator(loadset->end()));
-
-		loadset->resize(n);
-		loadset->shrink_to_fit();
-
-		opset->reserve(nops);
-		for (int i = 0; i < nops; ++i)
-			opset->push_back(i & 1);
-		std::shuffle(std::begin(*opset), std::end(*opset), rng);
-
-		cout << "loadset=" << loadset->size() << ", testset=" << testset->size() << ", opset="<<opset->size()<<'\n';
-	}
-
 	// generate random numbers and insert into the table.
 	// maintain list of all keys inserted until target load factor reached
-	void
-	loadtable(hashtable *ht, std::vector<uint32_t> *loadset,
-	          std::vector<uint32_t> *inserted, double lf)
+	void loadtable(hashtable *ht, std::vector<uint32_t> *keys, double lf)
 	{
 		double start = ht->load_factor();
-		int loadops = ht->table_size() * (lf - start);
-		int interval = loadops / 20;
+		int interval = (lf - ht->load_factor()) * ht->table_size() / 20;
 		int stat_timer = interval;
 		uint64_t k;
 
-		cout << "Load: " << start << " -> " << lf << "\n";
+		uniform_int_distribution<uint64_t> data(0,UINT32_MAX);
+		cout << "Load: " << ht->load_factor() << " -> " << lf;
 
-		for (int i = 0; i < loadops; ++i) {
-			k = loadset->back();
-			loadset->pop_back();
+		while(ht->load_factor() < lf) {
+			k = data(rng);
 			using result = hashtable::result;
-			result r = ht->insert(k, k>>2);
-			switch(r) {
-			case result::SUCCESS:
-				inserted->push_back(k);
-				break;
-			case result::REBUILD:
-				inserted->push_back(k);
+			result r = ht->insert(k, k/2);
+			if (r == result::SUCCESS) {
+				keys->push_back(k);
+			} else if (r == result::REBUILD) {
+				keys->push_back(k);
+				cout << "\rLoad rebuild" << std::flush;
 				loadrebuild(ht);
-				break;
-			case result::FULLTABLE: // this should never happen
-				std::cerr << "Table full!\n";
-				return;
-			case result::DUPLICATE: // this also shouldn't happen
-				std::cerr << "Duplicate found\n";
-			default:
-				break;
 			}
 
 			if (--stat_timer == 0) {
 				stat_timer = interval;
 				cout << "\r["
-				     << 100 * (ht->load_factor() - start)
-				        / (lf - start)
+				     << 100.0*(ht->load_factor() - start)
+				     / (lf - start)
 				     << "%]   " << std::flush;
 			}
 		}
 
-		cout << "\r[done]     , inserted=" << inserted->size() << "\n";
+		cout << "\r[done]       ";
 	}
 
 	void
-	floating(hashtable *ht, std::vector<int> *keys)
+	floating(hashtable *ht, std::vector<uint32_t> *keys)
 	{
 		int op, i, k;
 		int ins = 0, del = 0;
-		uniform_int_distribution<uint64_t> data(0,UINT32_MAX);
+		uniform_int_distribution<uint32_t> data(0,UINT32_MAX);
 		uniform_int_distribution<int> operation(0,99);
 		
 		// randomly insert or delete until the rebuild window is hit
@@ -173,55 +123,39 @@ class rebuildtester {
 		} while (r != res::REBUILD);
 	}
 
-	void float_rebuild_timer(hashtable *ht, std::vector<int> *keys,
-				 std::vector<duration<double> > *optimes,
+	void float_rebuild_timer(hashtable *ht, std::vector<uint32_t> *keys,
 				 std::vector<duration<double> > *rbtimes,
 				 std::vector<int> *rbwindows)
 	{
 		time_point<steady_clock> start, end;
 		ht->rebuild();  // start from a "good" state
 		ht->reset_perf_counts();
-#ifndef QUIET
-		cout << "timing operations and rebuilds: ";
-#endif
+		cout << "\rTesting      " << std::flush;
 		for (int i=0; i<ntests; ++i) {
-#ifndef QUIET
-			cout << i+1 << std::flush;
-#endif
 			rbwindows->push_back(ht->get_rebuild_window());
 
-			start = steady_clock::now();
-			floating(ht, keys);
-			end = steady_clock::now();
-			optimes->push_back(end - start);
+			floating(ht, keys); // get to rebuild window
 
-#ifndef QUIET
-			cout << "...rebuild... " << std::flush;
-#endif
+			// timing begins
 			start = steady_clock::now();
 			ht->rebuild();
 			end = steady_clock::now();
+
 			rbtimes->push_back(end - start);
 
 			ht->reset_perf_counts();
 		}
-#ifndef QUIET
 		cout << std::endl;
-#endif
 	}
 
 	std::ostream& dump_rebuild_stats(std::ostream &o = std::cout) const
 	{
 		o << "\n----- " << type
-		     << " --------------------------------\n";
-		o << "Rebuild windows, Floating ops times, Mean, Median, "
-		     << "Rebuild times, Mean, Median, Loadfactor, x, n\n";
+		  << " --------------------------------\n"
+		  << "Rb window, Rb times, Mean, Median, a, x, n\n";
 
 		for (rebuild_stats_t q : stats) {
 			o << q.rebuild_windows << ", "
-			  << q.ops_time << ", "
-			  << q.mean_ops_time << ", "
-			  << q.median_ops_time << ", "
 			  << q.rebuild_time << ", "
 			  << q.mean_rebuild_time << ", "
 			  << q.median_rebuild_time << ", "
@@ -235,10 +169,9 @@ class rebuildtester {
 
 	void run_test()
 	{
-		
 		for (auto b : bs) {
 			hashtable ht(next_prime(b));
-			vector<int> keys;
+			vector<uint32_t> keys;
 			type = ht.table_type();
 			cout << type << "\n";
 
@@ -247,24 +180,19 @@ class rebuildtester {
 			keys.reserve(size);
 			for (auto x : xs) {
 				double lf = 1.0 - (1.0 / x);
-				cout << ht.table_type() << " size: " << size
-				     << ", x=" << x << " (lf=" << lf << ") "
-				     << std::endl;
+				cout << "              size: " << size
+				     << ", x=" << x << " (lf=" << lf << ") ";
 
 				loadtable(&ht, &keys, lf);
 
-				vector <duration<double> > op_times;
 				vector <duration<double> > rb_times;
 				vector <int> rbwindows;
-				float_rebuild_timer(&ht, &keys, &op_times,
-				                    &rb_times, &rbwindows);
+				float_rebuild_timer(&ht, &keys, &rb_times,
+				                    &rbwindows);
 
 				rebuild_stats_t q {
-					.ops_time            = op_times,
 					.rebuild_windows     = rbwindows,
 					.rebuild_time        = rb_times,
-					.mean_ops_time       = mean(op_times),
-					.median_ops_time     = median(op_times),
 					.mean_rebuild_time   = mean(rb_times),
 					.median_rebuild_time = median(rb_times),
 					.alpha               = ht.load_factor(),

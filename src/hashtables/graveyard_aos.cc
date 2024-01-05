@@ -474,11 +474,11 @@ graveyard_aos<K,V>::cluster_len(std::map<int,int> *clust) const
 	}
 }
 
-// fill in a histogram of shift lengths
+// fill in a histogram of search distances
 // i.e. the distance from a key's slot and the hash of that key
 template<typename K, typename V>
 void
-graveyard_aos<K,V>::shift_distance(std::map<int,int> *disp) const
+graveyard_aos<K,V>::search_distance(std::map<int,int> *disp) const
 {
 	for(uint32_t p = 0; p < buckets; ++p) {
 		if (full(p)) {
@@ -490,6 +490,20 @@ graveyard_aos<K,V>::shift_distance(std::map<int,int> *disp) const
 			(*disp)[d]++;
 		}
 	 }
+
+	int ntile = records/5;
+	int total=0, which=0, last=0;
+	for (auto iter = disp->begin(); iter != disp->end(); ++iter) { 
+		std::cerr << iter->first << ":" << iter->second << " ";
+		total += iter->second;
+		if (total > ntile || std::next(iter) == disp->end()) {
+			std::cerr << which+1 << "th quintile " << 
+				last << " - " << iter->first << "\n";
+			total -= ntile;
+			last = iter->first;
+			which++;
+		}
+	}
 }
 
 // ensure keys are monotonically increasing

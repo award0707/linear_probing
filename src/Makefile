@@ -5,7 +5,7 @@ INC = -I. -Itesters -Ihashtables -Itools
 
 tabletypes = graveyard_aos ordered_aos linear_aos graveyard_soa \
 	     ordered_soa linear_soa
-testers = querytester rebuildtester loadtester floattester
+testers = querytester rebuildtester loadtester floattester one_rb_querytester
 benches = tabletest querystats queuestats xtester rebuildstats \
 	  floatstats loadstats
 

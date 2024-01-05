@@ -191,6 +191,9 @@ class querytester {
 				querytimer(&ht, &keys, &times,
 				           nqueries, fail_pct);
 
+				std::map<int,int> sdhist;
+				ht.search_distance(&sdhist);
+
 				query_stats_t q {
 					.nqueries            = nqueries,
 					.failrate            = fail_pct,
@@ -198,6 +201,7 @@ class querytester {
 					.mean_query_time     = mean(times),
 					.median_query_time   = median(times),
 					.alpha               = ht.load_factor(),
+					.mean_sd             = mean(sdhist);
 					.x                   = x,
 					.n                   = ht.table_size(),
 				};

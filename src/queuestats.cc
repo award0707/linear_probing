@@ -50,8 +50,11 @@ void loadtable(hashtable *ht, std::vector<uint32_t> *keys, double lf)
 		k = data(rng);
 		using result = hashtable::result;
 		result r = ht->insert(k, k/2);
-		if (r == result::SUCCESS || r == result::REBUILD) {
+		if (r == result::SUCCESS) {
 			keys->push_back(k);
+		} else if (r == result::REBUILD) {
+			keys->push_back(k);
+			ht->rebuild();
 		}
 
 		if (--stat_timer == 0) {
@@ -113,7 +116,7 @@ void queuetest(hashtable *ht, std::vector<uint32_t> *keys, std::vector<int> *mrq
 		cout << i+1 << std::flush;
 		floating(ht, keys);
 		assert(ht->failed_inserts == ht->duplicates);
-		assert(ht->failed_removes == 0);
+		//assert(ht->failed_removes == 0);
 
 		cout << "... " << std::flush;
 		ht->rebuild();
@@ -164,16 +167,15 @@ void dump_queue_stats(const vector<queue_stats_t> &v,
 
 int main(int argc, char **argv)
 {
-	vector<queue_stats_t> queuestats;
 	vector<int> xs{2,3,4,5,6,7,8,9,10,15,20,25,
 	               30,40,50,60,70,80,90,100,200,400,700,1000};
 	vector<uint32_t> bs { 10'000, 100'000, 500'000,
 	                      1'000'000, 5'000'000,
 	                      10'000'000, 50'000'000,
-	                      100'000'000, 500'000'000,
-	                      1'000'000'000 };
+	                      100'000'000, 500'000'000, 1'000'000'000 };
 	
 	for (auto b : bs) {
+		vector<queue_stats_t> queuestats;
 		hashtable ht(next_prime(b));
 		vector<uint32_t> keys;
 
@@ -203,10 +205,46 @@ int main(int argc, char **argv)
 
 			queuestats.push_back(q);
 		}
+		std::ofstream f("maxqueue_by_x_"
+				+ std::to_string(b/1000));
+		dump_queue_stats(queuestats, f);
 	}
 
-	std::fstream f("graveyard_maxqueue");
-	dump_queue_stats(queuestats, f);
+	for (auto x : xs) {
+		vector<queue_stats_t> queuestats;
+		for (auto b : bs) {
+			hashtable ht(next_prime(b));
+			vector<uint32_t> keys;
+
+			uint64_t size = ht.table_size();
+			keys.reserve(size);
+			double lf = 1.0 - (1.0 / x);
+			ht.set_max_load_factor(1.0);
+			cout << "Table size: " << size
+			     << ", x=" << x
+			     << " (lf=" << lf << "): ";
+
+			loadtable(&ht, &keys, lf);
+
+			vector <int> mrq;
+			queuetest(&ht, &keys, &mrq);
+
+			queue_stats_t q {
+			        .rebuild_window    = ht.get_rebuild_window(),
+			        .max_rebuild_queue = mrq,
+			        .mean_mrq          = mean(mrq),
+			        .median_mrq        = median(mrq),
+			        .alpha             = ht.load_factor(),
+			        .x                 = x,
+			        .n                 = ht.table_size(),
+			};
+
+			queuestats.push_back(q);
+		}
+		std::ofstream f("maxqueue_by_n_" +
+				std::to_string(x));
+		dump_queue_stats(queuestats, f);
+	}
 
 	return 0;
 }

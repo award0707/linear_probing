@@ -12,7 +12,7 @@
 #define INFINITE	/* test in an infinite loop, breaking only on error */
 #define READD_BEFORE	/* do a readd test before rebuilding */
 
-using hashtable = graveyard_aos<uint32_t, int>;
+using hashtable = graveyard_aos<uint32_t,int>;
 using result = hashtable::result;
 
 bool check(hashtable &h)

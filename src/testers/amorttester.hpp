@@ -121,7 +121,6 @@ class amorttester {
 		uint32_t k;
 		using res = hashtable::result;
 		res r;
-		int x=0,y=0, fr=0;
 
 		for (int i=0; i<nops; ++i) {
 			if (opset[i] == 1) {
@@ -134,32 +133,23 @@ class amorttester {
 					inserted->push_back(k);
 				} else
 					std::cerr << "Duplicate insert!\n";
-				++x;
 			} else {
 				assert(!inserted->empty());
 				assert(!delorder->empty());
 				k = (*inserted)[delorder->back()];
 				r = ht->remove(k);
 				if (r != res::FAILURE) {
-					(*inserted)[delorder->back()] = inserted->back();
+					(*inserted)[delorder->back()] =
+						inserted->back();
 					inserted->pop_back();
 					delorder->pop_back();
 				}
-				else { std::cerr << "What?\n"; fr++; }
-				++y;
+				else { std::cerr << "What?\n"; }
 			}
 
-			if (r == res::REBUILD) {
-				uint32_t br=ht->num_records();
+			if (r == res::REBUILD) 
 				ht->rebuild();
-				std::cerr << "R" << ht->rebuilds << ": N="<<ht->table_size() << ",n="<<ht->num_records()<<",br="<<br<<",i="<<i<<",op="<<(int)opset[i]<<"\n";
-				if (ht->num_records() != br) {
-					std::cerr << "the rebuild took place after inserting k="<<k<<"\n";
-					assert(ht->num_records() == br);
-				}
-			}
 		}
-		std::cerr << "x=" << x << ",y="<< y<<'\n';
 	}
 
 	void float_timer(hashtable *ht,

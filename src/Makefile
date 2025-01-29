@@ -1,6 +1,6 @@
 CC=g++ -std=c++2a
-CFLAGS=-ggdb -O0 -Wall
-#CFLAGS=-O2 -Wall
+#CFLAGS=-ggdb -O0 -Wall
+CFLAGS=-O2 -Wall
 INC = -I. -Itesters -Ihashtables -Itools
 
 tabletypes = graveyard_aos ordered_aos linear_aos graveyard_soa \

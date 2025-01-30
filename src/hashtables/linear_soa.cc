@@ -203,7 +203,7 @@ template <typename K, typename V>
 void
 linear_soa<K, V>::reset_rebuild_window()
 {
-	rebuild_window = buckets/2 * (1.0 - load_factor());
+	rebuild_window = buckets/2 * (1.0 - load_factor()) + 1;
 }
 
 template <typename K, typename V>

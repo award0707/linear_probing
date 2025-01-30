@@ -273,7 +273,7 @@ template<typename K, typename V>
 void
 ordered_soa<K, V>::reset_rebuild_window()
 {
-	rebuild_window = buckets/2 * (1.0 - load_factor());
+	rebuild_window = 1 + buckets/2 * (1.0 - load_factor());
 }
 
 template<typename K, typename V>

@@ -37,7 +37,8 @@ class amorttester {
 		std::vector<duration<double>> ops_time;
 		double mean_ops_time;
 		double median_ops_time;
-		int rw;
+		unsigned int rw;
+		unsigned int rb;
 		double alpha;
 		std::size_t n;
 	};
@@ -123,7 +124,7 @@ class amorttester {
 		res r;
 
 		for (int i=0; i<nops; ++i) {
-			if (opset[i] == 1) {
+			if (opset[i] == 0) {
 				assert(ht->num_records() < ht->table_size());
 				assert(!testset->empty());
 				k = testset->back();
@@ -159,7 +160,6 @@ class amorttester {
 	{
 		time_point<steady_clock> start, end;
 		ht->rebuild(); 
-		ht->rebuilds = 0;
 
 		ht->reset_perf_counts();
 		cout << "timing floating operations with rebuilds: ";
@@ -170,7 +170,7 @@ class amorttester {
 			std::vector<uint8_t> opset;
 			opset.reserve(nops);
 			for (int j = (i&1); j < nops; ++j) opset.push_back(j & 1);
-			//std::shuffle(std::begin(opset), std::end(opset), rng);
+			// std::shuffle(std::begin(opset), std::end(opset), rng);
 
 			// deletion order
 			std::vector<uint32_t> delorder;
@@ -180,6 +180,7 @@ class amorttester {
 				delorder.push_back(U(rng));
 			cout << ".." << std::flush;
 
+			ht->rebuilds = 0;
 			// timed section - floating ops and rebuild
 			start = steady_clock::now();
 			floating(ht, testset, inserted, &delorder, opset);
@@ -189,7 +190,6 @@ class amorttester {
 			cout << "(" << ht->rebuilds << ").. " << std::flush;
 
 			ht->rebuild();
-			ht->rebuilds = 0;
 			ht->reset_perf_counts();
 		}
 		cout << std::endl;
@@ -203,6 +203,7 @@ class amorttester {
 			  << q.mean_ops_time << ", "
 			  << q.median_ops_time << ", "
 			  << q.rw << ", "
+			  << q.rb << ", "
 			  << q.alpha << ", "
 			  << q.x << ", "
 			  << q.n << '\n';
@@ -240,7 +241,8 @@ class amorttester {
 			.ops_time            = op_times,
 			.mean_ops_time       = mean(op_times),
 			.median_ops_time     = median(op_times),
-			.rw                  = ht.get_rebuild_window(),
+			.rw                  = ht.table_size() / (4*x),
+			.rb                  = nops * 4 * x / ht.table_size(),
 			.alpha               = ht.load_factor(),
 			.n                   = ht.table_size(),
 		};

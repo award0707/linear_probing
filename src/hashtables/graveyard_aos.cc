@@ -303,6 +303,7 @@ void graveyard_aos<K,V>::
 reset_rebuild_window()
 {
 	rebuild_window = buckets/4.0 * (1.0 - load_factor()); // 1-a = 1/x
+
 }
 
 template<typename K, typename V>

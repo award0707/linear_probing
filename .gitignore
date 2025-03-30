@@ -3,12 +3,8 @@
 *.out
 *.swp
 *.csv
-tabletest
-loadstats
-rebuildstats
-querystats
-floatstats
-queuestats
-xtester
 tags
+*
+!*/
+!*.*
 

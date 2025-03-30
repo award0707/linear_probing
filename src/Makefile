@@ -1,5 +1,5 @@
 CC=g++ -std=c++2a
-#CFLAGS=-ggdb -O0
+#CFLAGS=-ggdb -O0 -Wall
 CFLAGS=-O2 -Wall
 INC = -I. -Itesters -Ihashtables -Itools
 

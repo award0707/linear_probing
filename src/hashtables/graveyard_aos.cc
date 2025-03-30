@@ -10,7 +10,8 @@ using std::cerr, std::size_t;
 template class graveyard_aos<>;
 
 template<typename K, typename V>
-graveyard_aos<K, V>::graveyard_aos(uint32_t b)
+graveyard_aos<K, V>::
+graveyard_aos(uint32_t b)
 {
 	prime_index = 0;
 	while(b > primes[prime_index]) 
@@ -38,21 +39,22 @@ graveyard_aos<K, V>::graveyard_aos(uint32_t b)
 }	
 
 template<typename K, typename V>
-graveyard_aos<K, V>::~graveyard_aos()
+graveyard_aos<K, V>::
+~graveyard_aos()
 {
 	delete[] table;
 }
 
 template<typename K, typename V>
-uint32_t
-graveyard_aos<K, V>::hash(uint32_t k) const
+uint32_t graveyard_aos<K, V>::
+hash(uint32_t k) const
 {
 	return (uint32_t)(((uint64_t)k * (uint64_t)buckets) >> 32);
 }
 
 template<typename K, typename V>
-void
-graveyard_aos<K, V>::resize(uint32_t b)
+void graveyard_aos<K, V>::
+resize(uint32_t b)
 {
 	uint32_t oldbuckets = buckets;
 	record_t *oldtable = table;
@@ -77,8 +79,8 @@ graveyard_aos<K, V>::resize(uint32_t b)
 }
 
 template<typename K, typename V>
-bool
-graveyard_aos<K, V>::probe(K k, uint32_t *slot, optype operation, bool* wrapped)
+bool graveyard_aos<K, V>::
+probe(K k, uint32_t *slot, optype operation, bool* wrapped)
 {
 	const uint32_t h = hash(k);
 	uint64_t miss = 0;
@@ -127,8 +129,8 @@ graveyard_aos<K, V>::probe(K k, uint32_t *slot, optype operation, bool* wrapped)
 // find the end of the cluster, then slide records 1 to the right as a block
 
 template<typename K, typename V>
-uint32_t
-graveyard_aos<K, V>::shift(uint32_t start)
+uint32_t graveyard_aos<K, V>::
+shift(uint32_t start)
 {
 	using std::memmove;
 	const uint32_t last = buckets-1;
@@ -154,8 +156,8 @@ graveyard_aos<K, V>::shift(uint32_t start)
 
 
 template<typename K, typename V>
-int
-graveyard_aos<K, V>::rebuild_seek(uint32_t x, uint32_t &end)
+int graveyard_aos<K, V>::
+rebuild_seek(uint32_t x, uint32_t &end)
 {
 	const uint32_t last = buckets-1;
 	while(1) {
@@ -174,8 +176,8 @@ graveyard_aos<K, V>::rebuild_seek(uint32_t x, uint32_t &end)
 }
 
 template<typename K, typename V>
-uint32_t
-graveyard_aos<K, V>::rebuild_shift(uint32_t start)
+uint32_t graveyard_aos<K, V>::
+rebuild_shift(uint32_t start)
 {
 	record_t lastscratch, scratch;
 	bool valid = false;
@@ -202,8 +204,8 @@ graveyard_aos<K, V>::rebuild_shift(uint32_t start)
 }
 
 template<typename K, typename V>
-graveyard_aos<K,V>::result
-graveyard_aos<K,V>::insert(K k, V v, bool rebuilding)
+graveyard_aos<K,V>::result graveyard_aos<K,V>::
+insert(K k, V v, bool rebuilding)
 {
 	uint32_t slot;
 	bool wrapped=false;
@@ -258,8 +260,8 @@ graveyard_aos<K,V>::insert(K k, V v, bool rebuilding)
 }
 
 template<typename K, typename V>
-bool
-graveyard_aos<K, V>::query(K k, V *v) 
+bool graveyard_aos<K, V>::
+query(K k, V *v) 
 {
 	uint32_t slot;
 	++queries;
@@ -274,8 +276,8 @@ graveyard_aos<K, V>::query(K k, V *v)
 }
 
 template<typename K, typename V>
-graveyard_aos<K, V>::result
-graveyard_aos<K, V>::remove(K k)
+graveyard_aos<K, V>::result graveyard_aos<K, V>::
+remove(K k)
 {
 	uint32_t slot;
 	++removes;	
@@ -297,15 +299,15 @@ graveyard_aos<K, V>::remove(K k)
 
 
 template<typename K, typename V>
-void
-graveyard_aos<K,V>::reset_rebuild_window()
+void graveyard_aos<K,V>::
+reset_rebuild_window()
 {
 	rebuild_window = buckets/4.0 * (1.0 - load_factor()); // 1-a = 1/x
 }
 
 template<typename K, typename V>
-void
-graveyard_aos<K, V>::rebuild()
+void graveyard_aos<K, V>::
+rebuild()
 {
 	int tombcount = (buckets/2) * (1.0 - load_factor()); // 1-a = 1/x
 	double interval = tombcount ? (buckets / tombcount) : buckets;
@@ -351,15 +353,17 @@ graveyard_aos<K, V>::rebuild()
 		if (q <= p) q = p + 1;
 	}
 
+	records -= queue.size(); // avoid double count on reinsert
 	for (record_t r : queue) insert(r.key, r.value, true);
+
 	for (record_t r : overflow) insert(r.key, r.value, true);
 	reset_rebuild_window();	
 	++rebuilds;
 }
 
 template<typename K, typename V>
-void
-graveyard_aos<K, V>::update_misses(uint64_t misses, enum optype op)
+void graveyard_aos<K, V>::
+update_misses(uint64_t misses, enum optype op)
 {
 	int n = ++search_count;
 	total_misses += misses;
@@ -380,8 +384,8 @@ graveyard_aos<K, V>::update_misses(uint64_t misses, enum optype op)
 }
 
 template<typename K, typename V>
-void
-graveyard_aos<K, V>::reset_perf_counts()
+void graveyard_aos<K, V>::
+reset_perf_counts()
 {
 	inserts = queries = removes = rebuild_inserts = 0;
 	insert_misses = query_misses = remove_misses = 0;
@@ -397,8 +401,8 @@ graveyard_aos<K, V>::reset_perf_counts()
 }
 
 template<typename K, typename V>
-void
-graveyard_aos<K, V>::report_testing_stats(std::ostream &os, bool verbose)
+void graveyard_aos<K, V>::
+report_testing_stats(std::ostream &os, bool verbose)
 {
 	if (verbose) {
 		os << "Misses\n";
@@ -444,8 +448,8 @@ graveyard_aos<K, V>::report_testing_stats(std::ostream &os, bool verbose)
 
 // fill in a histogram of cluster lengths (tombstones count as boundaries)
 template<typename K,typename V>
-void
-graveyard_aos<K,V>::cluster_len(std::map<int,int> *clust) const
+void graveyard_aos<K,V>::
+cluster_len(std::map<int,int> *clust) const
 {
 	uint32_t last_empty, last_tomb; 
 	last_empty = last_tomb = table_head;
@@ -477,8 +481,8 @@ graveyard_aos<K,V>::cluster_len(std::map<int,int> *clust) const
 // fill in a histogram of search distances
 // i.e. the distance from a key's slot and the hash of that key
 template<typename K, typename V>
-void
-graveyard_aos<K,V>::search_distance(std::map<int,int> *disp) const
+void graveyard_aos<K,V>::
+search_distance(std::map<int,int> *disp) const
 {
 	for(uint32_t p = 0; p < buckets; ++p) {
 		if (full(p)) {
@@ -508,8 +512,8 @@ graveyard_aos<K,V>::search_distance(std::map<int,int> *disp) const
 
 // ensure keys are monotonically increasing
 template<typename K, typename V>
-bool
-graveyard_aos<K,V>::check_ordering()
+bool graveyard_aos<K,V>::
+check_ordering()
 {
 	uint32_t p = table_head, q;
 	bool wrapped = false, res = true;
@@ -538,8 +542,8 @@ graveyard_aos<K,V>::check_ordering()
 }
 
 template<typename K, typename V>
-void
-graveyard_aos<K, V>::debug_key_search(K k)
+void graveyard_aos<K, V>::
+debug_key_search(K k)
 {
 	uint32_t x, b; 
 	bool found = false;
@@ -572,8 +576,8 @@ graveyard_aos<K, V>::debug_key_search(K k)
 }
 
 template<typename K, typename V>
-void
-graveyard_aos<K, V>::dump()
+void graveyard_aos<K, V>::
+dump()
 {
 	for(uint32_t i=0; i<buckets; i++) {
 		if ((i!=0) && (i%10 == 0)) std::cout << "\n";

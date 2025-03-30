@@ -254,8 +254,8 @@ graveyard_soa<K,V>::insert(K k, V v, bool rebuilding)
 
 	if (!empty(slot)) {
 		uint32_t end;
-		end = (!rebuilding) ? shift(slot) : rebuild_shift(slot);
-		if (((end < slot) || wrapped) && end >= table_head)
+		end = rebuilding ? rebuild_shift(slot) : shift(slot);
+		if ((end < slot || wrapped) && end >= table_head)
 			++table_head;
 		if (!rebuilding) {
 			if (end >= slot)
@@ -339,7 +339,7 @@ template<typename K, typename V>
 void
 graveyard_soa<K, V>::rebuild()
 {
-	int tombcount = (buckets/2) * (1.0 - load_factor()); // 1-a = 1/x
+	int tombcount = (buckets/2.0) * (1.0 - load_factor()); // 1-a = 1/x
 	double interval = tombcount ? (buckets / tombcount) : buckets;
 
 	// save the part of the table that wrapped for reinsertion later
@@ -353,6 +353,7 @@ graveyard_soa<K, V>::rebuild()
 			settomb(p);
 		}
 	table_head = 0;
+	tombs = 0;
 
 	boost::circular_buffer<record_t> queue(tombcount);
 	for(uint32_t p = 0, q = 1, x = interval; p < buckets; p++) {
@@ -363,6 +364,7 @@ graveyard_soa<K, V>::rebuild()
 			max_rebuild_queue = std::max(max_rebuild_queue,
 			                             (int)queue.size());
 			settomb(p);
+			++tombs;
 			x = interval;
 		} else {
 			if (queue.empty()) {
@@ -374,6 +376,7 @@ graveyard_soa<K, V>::rebuild()
 						else {
 							slotmove(p, q, 1);
 							settomb(q);
+							++tombs;
 						}
 					} else
 						setempty(p);
@@ -391,7 +394,9 @@ graveyard_soa<K, V>::rebuild()
 		if (q <= p) q = p + 1;
 	}
 
+	records -= queue.size(); // these records would be double counted
 	for (record_t r : queue) insert(r.key, r.value, true);
+
 	for (record_t r : overflow) insert(r.key, r.value, true);
 	reset_rebuild_window();
 	++rebuilds;

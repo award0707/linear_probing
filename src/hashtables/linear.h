@@ -8,7 +8,7 @@
 #include <map>
 
 template <typename K = uint32_t,
-          typename V = uint32_t>
+          typename V = int>
 class linear_aos {
 	private:
 		enum slot_state { FULL, EMPTY, TOMB };

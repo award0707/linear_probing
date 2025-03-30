@@ -20,7 +20,7 @@
 pcg_extras::seed_seq_from<std::random_device> seed_source;
 pcg64 rng(seed_source);
 
-using hashtable = graveyard_aos<int,int>;
+using hashtable = graveyard_aos<uint32_t,int>;
 
 using std::chrono::duration;
 using std::chrono::steady_clock;
@@ -70,23 +70,6 @@ void loadtable(hashtable *ht, std::vector<int> *keys, double lf)
 	cout << "\r[done]     \n";
 }
 
-inline void
-rebuild_action(linear_aos<> *ht, hashtable::result r)
-{
-}
-
-inline void
-rebuild_action(ordered_aos<> *ht, hashtable::result r)
-{
-	if (r == hashtable::result::REBUILD) ht->rebuild();
-}
-
-inline void
-rebuild_action(graveyard_aos<> *ht, hashtable::result r)
-{
-	if (r == hashtable::result::REBUILD) ht->rebuild();
-}
-
 void floating(hashtable *ht, std::vector<int> *keys, int nops)
 {
 	int i, k;
@@ -120,7 +103,7 @@ void floating(hashtable *ht, std::vector<int> *keys, int nops)
 			++del;
 		}
 
-		rebuild_action(ht, r);
+		if (r == hashtable::result::REBUILD) ht->rebuild();
 		if (!(nops % 10'000)) std::cerr << "\rnops = " << nops << std::flush;
 	} while (--nops);
 	cout << "+"<<ins<<",-"<<del<<" : " << ht->table_size() - ht->num_records() << " free\n";

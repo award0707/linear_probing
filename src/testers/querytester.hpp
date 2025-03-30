@@ -97,7 +97,7 @@ class querytester {
 	void querying(hashtable *ht, const std::vector<uint32_t> &keys,
 	              int nq, int f_pct)
 	{
-		uint32_t v;
+		int v;
 		uint64_t fails = 0;
 		int j = keys.size()-1;
 
@@ -201,7 +201,6 @@ class querytester {
 					.mean_query_time     = mean(times),
 					.median_query_time   = median(times),
 					.alpha               = ht.load_factor(),
-					.mean_sd             = mean(sdhist);
 					.x                   = x,
 					.n                   = ht.table_size(),
 				};

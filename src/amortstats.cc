@@ -13,30 +13,41 @@ pcg_extras::seed_seq_from<std::random_device> seed_source;
 pcg64 rng(seed_source);
 
 #define AOS
+#define SOA
 
 int main(int argc, char **argv)
 {
 	const vector<int> xs { 10 };
 	const vector<uint64_t> bs {
-		 10'000,
+		 10'000, 20'000, 40'000, 60'000, 100'000,
+	         200'000, 400'000, 600'000, 800'000, 1'000'000,
+	         2'000'000, 4'000'000, 6'000'000, 8'000'000, 10'000'000,
 	};
 
 	const int nops = 1'000'000;
-	const int nt = 50;              // number of tests to average over
+	const int nt = 5;              // number of tests to average over
 
 #ifdef SOA
-	for (auto x : xs) {
-		std::ofstream f(std::to_string(x) + "_soa_amort");
-		f << amorttester<graveyard_soa<>>
-			(rng, vector<int>{x}, bs, nops, nt);
+	{
+		for (auto x : xs) {
+			std::ofstream f(std::to_string(x) + "_soa_amort");
+			f << "\n----- graveyard_soa --------------------------------\n";
+			f << "# ops, mean, median, RW, a, x, n\n";
+			for (auto b : bs)
+				f << amorttester<graveyard_soa<>> (rng, x, b, nops, nt);
+		}
 	}
 #endif
 
 #ifdef AOS
-	for (auto x : xs) {
-		std::ofstream f(std::to_string(x) + "_aos_amort");
-		f << amorttester<graveyard_aos<>>
-			(rng, vector<int>{x}, bs, nops, nt);
+	{
+		for (auto x : xs) {
+			std::ofstream f(std::to_string(x) + "_aos_amort");
+			f << "\n----- graveyard_aos --------------------------------\n";
+			f << "# ops, mean, median, RW, a, x, n\n";
+			for (auto b : bs)
+				f << amorttester<graveyard_aos<>> (rng, x, b, nops, nt);
+		}
 	}
 #endif
 	cout << "Complete\n";

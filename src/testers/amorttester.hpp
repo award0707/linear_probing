@@ -27,16 +27,18 @@ class amorttester {
 	private:
 	pcg64 &rng;
 	std::string type;
-	int x, nops, ntests;
+	double x;
+	int nops, ntests;
 	uint64_t b;
 
 	struct amort_stats_t {
 		uint64_t b;
-		int x;
+		double x;
 		int nops;
 		std::vector<duration<double>> ops_time;
 		double mean_ops_time;
 		double median_ops_time;
+		double mean_rb_time;
 		unsigned int rw;
 		unsigned int rb;
 		double alpha;
@@ -71,6 +73,7 @@ class amorttester {
 	loadtable(hashtable *ht, std::vector<uint32_t> *loadset,
 	          std::vector<uint32_t> *inserted, double lf)
 	{
+		using result = hashtable::result;
 		int loadops = ht->table_size() * lf;
 		int interval = loadops / 20;
 		int stat_timer = interval;
@@ -82,7 +85,6 @@ class amorttester {
 		for (int i = 0; i < loadops; ++i) {
 			k = loadset->back();
 			loadset->pop_back();
-			using result = hashtable::result;
 			result r = ht->insert(k, k>>2);
 			switch(r) {
 			case result::SUCCESS:
@@ -117,9 +119,11 @@ class amorttester {
 	              std::vector<uint32_t> *testset,
 	              std::vector<uint32_t> *inserted,
 		      std::vector<uint32_t> *delorder,
-	              const std::vector<uint8_t> &opset)
+	              const std::vector<uint8_t> &opset,
+		      std::vector<duration<double>> *rbtimes)
 	{
 		uint32_t k;
+		time_point<steady_clock> start, end;
 		using res = hashtable::result;
 		res r;
 
@@ -148,15 +152,20 @@ class amorttester {
 				else { std::cerr << "What?\n"; }
 			}
 
-			if (r == res::REBUILD) 
+			if (r == res::REBUILD) {
+				start = steady_clock::now();
 				ht->rebuild();
+				end = steady_clock::now();
+				rbtimes->push_back(end - start);
+			}
 		}
 	}
 
 	void float_timer(hashtable *ht,
                          std::vector<uint32_t> *testset,
 	                 std::vector<uint32_t> *inserted,
-	                 std::vector<duration<double>> *optimes)
+	                 std::vector<duration<double>> *optimes,
+			 std::vector<duration<double>> *rbtimes)
 	{
 		time_point<steady_clock> start, end;
 		ht->rebuild(); 
@@ -183,7 +192,7 @@ class amorttester {
 			ht->rebuilds = 0;
 			// timed section - floating ops and rebuild
 			start = steady_clock::now();
-			floating(ht, testset, inserted, &delorder, opset);
+			floating(ht, testset, inserted, &delorder, opset, rbtimes);
 			end = steady_clock::now();
 			optimes->push_back(end - start);
 
@@ -199,13 +208,14 @@ class amorttester {
 	{
 		for (amort_stats_t q : stats) {
 			o << q.nops << ", "
+			  << q.x << ", "
 		//	  << q.ops_time << ", "
 			  << q.mean_ops_time << ", "
 			  << q.median_ops_time << ", "
+			  << q.mean_rb_time << ", "
 			  << q.rw << ", "
 			  << q.rb << ", "
 			  << q.alpha << ", "
-			  << q.x << ", "
 			  << q.n << '\n';
 		}
 
@@ -224,7 +234,7 @@ class amorttester {
 
 		ht.set_max_load_factor(1.0);
 
-		vector <duration<double>> op_times;
+		vector <duration<double>> op_times, rb_times;
 		double lf = 1.0 - (1.0 / x);
 
 		cout << ht.table_type() << " "
@@ -232,7 +242,7 @@ class amorttester {
 		     << x << std::endl;
 
 		loadtable(&ht, &testset, &inserted, lf);
-		float_timer(&ht, &testset, &inserted, &op_times);
+		float_timer(&ht, &testset, &inserted, &op_times, &rb_times);
 
 		amort_stats_t q {
 			.b                   = b,
@@ -241,8 +251,11 @@ class amorttester {
 			.ops_time            = op_times,
 			.mean_ops_time       = mean(op_times),
 			.median_ops_time     = median(op_times),
-			.rw                  = ht.table_size() / (4*x),
-			.rb                  = nops * 4 * x / ht.table_size(),
+			.mean_rb_time        = mean(rb_times),
+			.rw                  =
+				(unsigned int)(ht.table_size() / (4*x)),
+			.rb                  =
+				(unsigned int)(nops * 4 * x / ht.table_size()),
 			.alpha               = ht.load_factor(),
 			.n                   = ht.table_size(),
 		};
@@ -251,7 +264,7 @@ class amorttester {
 	}
 
 	public:
-	amorttester(pcg64 &r, int x, uint64_t b, int no, int nt)
+	amorttester(pcg64 &r, double x, uint64_t b, int no, int nt)
 	             : rng(r), x(x), nops(no), ntests(nt), b(b) {
 		run_test();
 	}

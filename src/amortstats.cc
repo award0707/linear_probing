@@ -18,17 +18,20 @@ pcg64 rng(seed_source);
 
 int main(int argc, char **argv)
 {
-	const vector<int> xs { 20 };
+	vector<double> xs;
 	const vector<uint64_t> bs { 10'000,
-		 20'000, 40'000, 60'000, 80'000, 100'000,
-	         200'000, 400'000, 600'000, 800'000, 1'000'000,
-	         2'000'000, 4'000'000, 6'000'000, 8'000'000, 10'000'000,
-		 20'000'000, 40'000'000, 60'000'000, 80'000'000, 100'000'000,
-		 //200'000'000, 400'000'000, 600'000'000, 800'000'000, 1'000'000'000,
+		 /* 25'000, 50'000, 75'000, 100'000, */
+		 /* 250'000, 500'000, 750'000, 1'000'000, */
+		 /* 2'500'000, 5'000'000, 7'500'000, 10'000'000, */
+		 /* 25'000'000, 50'000'000, 75'000'000, 100'000'000, */
+		 /* 250'000'000, 500'000'000, 750'000'000, 1'000'000'000, */
 	};
 
 	const int nops = 10'000'000;
-	const int nt = 5;              // number of tests to average overk
+	const int nt = 5;              // number of tests to average over
+
+	for(double i=2.0; i<=10.0; i+=0.25) xs.push_back(i);
+	for(double i=11; i<=40; i+=1) xs.push_back(i);
 
 	std::string label;
 	if (argc == 2)
@@ -38,24 +41,24 @@ int main(int argc, char **argv)
 
 #ifdef SOA
 	{
-		for (auto x : xs) {
-			std::ofstream f(label + "soa_amort_" + std::to_string(x));
+		for (auto b : bs) {
+			std::ofstream f(label + "soa_amort_" + std::to_string(b));
 			f << "\n----- graveyard_soa --------------------------------\n";
-			f << "# ops, mean, median, RW, RB, a, x, n\n";
-			for (auto b : bs)
-				f << amorttester<graveyard_soa<>> (rng, x, b, nops, nt);
+			f << "# ops, mean total, median total, mean rb time, RW, RB, a, x, n\n";
+			for (auto x : xs)
+				f << amorttester<graveyard_soa<>> (rng, x, b, nops, nt) << std::flush;
 		}
 	}
 #endif
 
 #ifdef AOS
 	{
-		for (auto x : xs) {
-			std::ofstream f(label + "aos_amort_" + std::to_string(x));
+		for (auto b : bs) {
+			std::ofstream f(label + "aos_amort_" + std::to_string(b));
 			f << "\n----- graveyard_aos --------------------------------\n";
-			f << "# ops, mean, median, RW, RB, a, x, n\n";
-			for (auto b : bs)
-				f << amorttester<graveyard_aos<>> (rng, x, b, nops, nt);
+			f << "# ops, mean total, median total, mean rb time, RW, RB, a, x, n\n";
+			for (auto x : xs)
+				f << amorttester<graveyard_aos<>> (rng, x, b, nops, nt) << std::flush;
 		}
 	}
 #endif

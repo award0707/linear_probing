@@ -4,6 +4,10 @@
 *.swp
 *.csv
 tags
+bin
+obj
+a.out
+# ignore files with no extension
 *
 !*/
 !*.*

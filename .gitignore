@@ -1,14 +1,14 @@
+# ignore files with no extension
+*
+!*/
+!*.*
 *.d
 *.o
 *.out
 *.swp
 *.csv
 tags
-bin
-obj
 a.out
-# ignore files with no extension
-*
-!*/
-!*.*
+obj/
+stats/
 

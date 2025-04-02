@@ -43,8 +43,8 @@ int main(int argc, char **argv)
 	{
 		for (auto b : bs) {
 			std::ofstream f(label + "soa_amort_" + std::to_string(b));
-			f << "\n----- graveyard_soa --------------------------------\n";
-			f << "# ops, mean total, median total, mean rb time, RW, RB, a, x, n\n";
+			f << "\n----- graveyard structure of arrays ------------------------\n";
+			f << "# ops, total mean, total median, mean time spent rb, mean time non-rb, window, rebuilds, a, x, n\n";
 			for (auto x : xs)
 				f << amorttester<graveyard_soa<>> (rng, x, b, nops, nt) << std::flush;
 		}
@@ -55,8 +55,8 @@ int main(int argc, char **argv)
 	{
 		for (auto b : bs) {
 			std::ofstream f(label + "aos_amort_" + std::to_string(b));
-			f << "\n----- graveyard_aos --------------------------------\n";
-			f << "# ops, mean total, median total, mean rb time, RW, RB, a, x, n\n";
+			f << "\n----- graveyard array of structures ------------------------\n";
+			f << "# ops, total mean, total median, mean time spent rb, mean time non-rb, window, rebuilds, a, x, n\n";
 			for (auto x : xs)
 				f << amorttester<graveyard_aos<>> (rng, x, b, nops, nt) << std::flush;
 		}

@@ -39,6 +39,7 @@ class amorttester {
 		double mean_ops_time;
 		double median_ops_time;
 		double mean_rb_time;
+		double total_rb_time;
 		unsigned int rw;
 		unsigned int rb;
 		double alpha;
@@ -170,6 +171,8 @@ class amorttester {
 		time_point<steady_clock> start, end;
 		ht->rebuild(); 
 
+		// TODO: Calculate the total rebuild time per run
+		// TODO: Calculate the time spent not rebuilding too
 		ht->reset_perf_counts();
 		cout << "timing floating operations with rebuilds: ";
 
@@ -212,7 +215,7 @@ class amorttester {
 		//	  << q.ops_time << ", "
 			  << q.mean_ops_time << ", "
 			  << q.median_ops_time << ", "
-			  << q.mean_rb_time << ", "
+			  << q.total_rb_time << ", "
 			  << q.rw << ", "
 			  << q.rb << ", "
 			  << q.alpha << ", "
@@ -251,7 +254,7 @@ class amorttester {
 			.ops_time            = op_times,
 			.mean_ops_time       = mean(op_times),
 			.median_ops_time     = median(op_times),
-			.mean_rb_time        = mean(rb_times),
+			.total_rb_time       = sum(rb_times),
 			.rw                  =
 				(unsigned int)(ht.table_size() / (4*x)),
 			.rb                  =

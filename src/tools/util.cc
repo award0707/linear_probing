@@ -18,6 +18,12 @@ mean(vector<duration<double>> v)
 }
 
 double
+sum(vector<duration<double>> v)
+{
+	return (std::reduce(v.begin(), v.end())).count();
+}
+
+double
 mean(std::map<int,int> m)
 {
 	int count=0, sum=0;

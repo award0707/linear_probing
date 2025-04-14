@@ -14,7 +14,7 @@ pcg_extras::seed_seq_from<std::random_device> seed_source;
 pcg64 rng(seed_source);
 
 #define AOS
-#define SOA
+//#define SOA
 
 int main(int argc, char **argv)
 {
@@ -24,14 +24,14 @@ int main(int argc, char **argv)
 		 250'000, 500'000, 750'000, 1'000'000,
 		 2'500'000, 5'000'000, 7'500'000, 10'000'000,
 		 25'000'000, 50'000'000, 75'000'000, 100'000'000,
-		 250'000'000, 500'000'000, 750'000'000, 1'000'000'000,
+		 250'000'000,// 500'000'000, 750'000'000, 1'000'000'000,
 	};
 
-	const int nops = 10'000'000;   // ops per test
+	const int nops = 40'000'000;   // ops per test
 	const int nt = 5;              // number of tests to average 
 
 	for(double i=2.0; i<=20.0; i+=0.5) xs.push_back(i);
-	for(double i=21; i<=40; i+=1) xs.push_back(i);
+	for(double i=21; i<=30; i+=1) xs.push_back(i);
 
 	std::string label;
 	if (argc == 2)

@@ -11,4 +11,5 @@ tags
 a.out
 obj/
 stats/
+bin/
 

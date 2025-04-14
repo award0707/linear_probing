@@ -123,18 +123,22 @@ class amorttester {
 	              const std::vector<uint8_t> &opset,
 		      std::vector<duration<double>> *rbtimes)
 	{
+		hashtable::result r;
+		using enum hashtable::result;
+
 		uint32_t k;
 		time_point<steady_clock> start, end;
-		using res = hashtable::result;
-		res r;
+
+		// TODO: to research: how to start and stop a timer repeatedlyh
+		duration<double> rbt = 0;
 
 		for (int i=0; i<nops; ++i) {
 			if (opset[i] == 0) {
 				assert(ht->num_records() < ht->table_size());
 				assert(!testset->empty());
 				k = testset->back();
-				r = ht->insert(k, 42);
-				if (r == res::SUCCESS || r == res::REBUILD) {
+				r = ht->insert(k, k);
+				if (r == SUCCESS || r == REBUILD) {
 					testset->pop_back();
 					inserted->push_back(k);
 				} else
@@ -144,7 +148,7 @@ class amorttester {
 				assert(!delorder->empty());
 				k = (*inserted)[delorder->back()];
 				r = ht->remove(k);
-				if (r != res::FAILURE) {
+				if (r != FAILURE) {
 					(*inserted)[delorder->back()] =
 						inserted->back();
 					inserted->pop_back();
@@ -153,13 +157,15 @@ class amorttester {
 				else { std::cerr << "What?\n"; }
 			}
 
-			if (r == res::REBUILD) {
+			if (r == REBUILD) {
 				start = steady_clock::now();
 				ht->rebuild();
 				end = steady_clock::now();
-				rbtimes->push_back(end - start);
+				rbt.push_back(end - start);
 			}
 		}
+
+		rbtimes->push_back(sum(rbt));
 	}
 
 	void float_timer(hashtable *ht,
@@ -254,7 +260,7 @@ class amorttester {
 			.ops_time            = op_times,
 			.mean_ops_time       = mean(op_times),
 			.median_ops_time     = median(op_times),
-			.total_rb_time       = sum(rb_times),
+			.mean_rb_time       = sum(rb_times),
 			.rw                  =
 				(unsigned int)(ht.table_size() / (4*x)),
 			.rb                  =

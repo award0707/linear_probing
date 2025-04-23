@@ -129,9 +129,10 @@ class amorttester {
 		uint32_t k;
 		time_point<steady_clock> start, end;
 
-		// TODO: to research: how to start and stop a timer repeatedlyh
-		duration<double> rbt = 0;
-
+		// TODO: to research: how to start and stop a timer repeatedly
+		duration<double> nonrb = 0, rb = 0;
+		 
+		start = steady_clock::now();
 		for (int i=0; i<nops; ++i) {
 			if (opset[i] == 0) {
 				assert(ht->num_records() < ht->table_size());
@@ -158,10 +159,13 @@ class amorttester {
 			}
 
 			if (r == REBUILD) {
+				nonrb += (steady_clock::now() - start);
+
 				start = steady_clock::now();
 				ht->rebuild();
-				end = steady_clock::now();
-				rbt.push_back(end - start);
+				rb += (steady_clock::now() - start);
+
+				start = steady_clock::now();
 			}
 		}
 

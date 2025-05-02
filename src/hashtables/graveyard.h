@@ -6,7 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
-//test:
+
 template <typename K = uint32_t,
           typename V = int>
 class graveyard_aos {
@@ -17,8 +17,8 @@ class graveyard_aos {
 		struct record_t {
 			K key;
 			V value;
-			slot_state state;
 		} *table;
+		enum slot_state *states;
 
 		uint32_t buckets;
 		uint32_t records;
@@ -38,12 +38,14 @@ class graveyard_aos {
 		uint32_t shift(uint32_t slot);
 		int rebuild_seek(uint32_t x, uint32_t &end);
 		uint32_t rebuild_shift(uint32_t slot);
+		inline void slotmove(uint32_t destidx, uint32_t srcidx,
+		     size_t count);
 
 		void reset_rebuild_window();
 		void update_misses(uint64_t misses, enum optype op);
 
 		inline slot_state state(uint32_t k) const {
-			return table[k].state;
+			return states[k];
 		}
 		inline K& key(uint32_t k) const {
 			return table[k].key;
@@ -57,9 +59,9 @@ class graveyard_aos {
 		inline void setvalue(uint32_t k, V v)
 			{ table[k].value = v; }
 
-		inline void setfull(uint32_t k) { table[k].state = FULL; }
-		inline void setempty(uint32_t k) { table[k].state = EMPTY; }
-		inline void settomb(uint32_t k) { table[k].state = TOMB; }
+		inline void setfull(uint32_t k) { states[k] = FULL; }
+		inline void setempty(uint32_t k) { states[k] = EMPTY; }
+		inline void settomb(uint32_t k) { states[k] = TOMB; }
 
 		inline bool full(uint32_t k) const {
 			return state(k) == FULL;

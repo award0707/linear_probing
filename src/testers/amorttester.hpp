@@ -61,14 +61,15 @@ class amorttester {
 	void
 	gen_testset(std::vector<uint32_t>* loadset, uint32_t n)
 	{
-		cout << "Generate test set\n";
 		n += nops * ntests;
+		cout << "Reserve testset, size " << n << "..." << std::flush; 
 		loadset->reserve(n);
+		cout << "done. Generate testset..." << std::flush; 
 		selsample(loadset,n,std::numeric_limits<uint32_t>::max(),rng);
 
-		cout << "Loadset generated\n";
+		cout << "done. Shuffling..." << std::flush;
 		std::shuffle(std::begin(*loadset), std::end(*loadset), rng);
-		cout << "Loadset shuffled, size = " << loadset->size() << "\n";
+		cout << "done, size = " << loadset->size() << "\n";
 	}
 
 	// generate random numbers and insert into the table.
@@ -187,7 +188,7 @@ class amorttester {
 		cout << "timing floating operations with rebuilds: ";
 
 		for (int i=0; i<ntests; ++i) {
-			cout << i+1 << std::flush;
+			cout << i+1 << "/" << ntests << std::flush;
 			// operations 
 			std::vector<uint8_t> opset;
 			opset.reserve(nops);
@@ -200,7 +201,6 @@ class amorttester {
 			std::uniform_int_distribution<> U(0,inserted->size()/2);
 			while((int)delorder.size() < nops/2+1) 
 				delorder.push_back(U(rng));
-			cout << ".." << std::flush;
 
 			ht->rebuilds = 0;
 			// timed section - floating ops and rebuild
@@ -210,8 +210,7 @@ class amorttester {
 			t2 = steady_clock::now();
 			optimes->push_back(t2 - t1);
 
-			cout << i+1 << "/" << ntests
-			     << "Time: " << optimes->back()
+			cout << " Time: " << optimes->back()
 			     << ", Inserting: " << insert_times->back()
 			     << ", Rebuilding: " << rebuild_times->back()
 			     << std::endl;

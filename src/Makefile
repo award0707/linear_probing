@@ -12,28 +12,31 @@ benches = tabletest querystats queuestats xtester rebuildstats \
 
 TABLEDEPS = $(wildcard tools/*) $(wildcard hashtables/*.h)
 TESTERDEPS = $(wildcard tools/*) $(wildcard testers/*.hpp)
+OBJDIR = ../obj
+BINDIR = ../bin
 SRC = $(tabletypes:%=tables/%.cc) 
-OBJ = $(tabletypes:%=obj/%.o) obj/primes.o obj/util.o
+OBJ = $(tabletypes:%=$(OBJDIR)/%.o) $(OBJDIR)/primes.o $(OBJDIR)/util.o
 
 all: tests
 
-obj/%.o: hashtables/%.cc $(TABLEDEPS)
-	mkdir -p obj
+$(OBJDIR)/%.o: hashtables/%.cc $(TABLEDEPS)
+	mkdir -p $(OBJDIR)
 	@echo $@
 	$(CC) -c -o $@ $< $(CFLAGS) $(INC)
 
-obj/%.o: %.cc $(TABLEDEPS) $(TESTERDEPS) 
-	mkdir -p obj
+$(OBJDIR)/%.o: %.cc $(TABLEDEPS) $(TESTERDEPS) 
+	mkdir -p $(OBJDIR)
 	@echo $@
 	$(CC) -c -o $@ $< $(CFLAGS) $(INC)
 
-obj/%.o: tools/%.cc $(wildcard tools/*)
-	mkdir -p obj
+$(OBJDIR)/%.o: tools/%.cc $(wildcard tools/*)
+	mkdir -p $(OBJDIR)
 	@echo $@
 	$(CC) -c -o $@ $< $(CFLAGS) $(INC)
 
-$(benches): %: obj/%.o $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(INC)
+$(benches): %: $(OBJDIR)/%.o $(OBJ)
+	mkdir -p $(BINDIR)
+	$(CC) -o $(BINDIR)/$@ $^ $(CFLAGS) $(INC)
 
 tests: $(benches)
 
@@ -41,6 +44,6 @@ test:
 	@echo $(SRC)
 	@echo $(OBJ)
 
-clean :
-	-rm obj/*.o -f $(benches)
+clean:
+	-rm $(OBJDIR)/*.o -f $(addprefix $(BINDIR)/, $(benches))
 

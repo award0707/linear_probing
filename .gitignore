@@ -1,10 +1,15 @@
+# ignore files with no extension
+*
+!*/
+!*.*
 *.d
 *.o
 *.out
 *.swp
 *.csv
 tags
-*
-!*/
-!*.*
+a.out
+obj/
+stats/
+bin/
 

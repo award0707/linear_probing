@@ -32,18 +32,21 @@ class amorttester {
 	uint64_t b;
 
 	struct amort_stats_t {
-		uint64_t b;
-		double x;
-		int nops;
+		uint64_t b;     // desired # of slots
+		double x;       // load ratio: 1/x slots are empty
+		int nops;       // ops per test
 		std::vector<duration<double>> ops_time;
 		double mean_ops_time;
 		double median_ops_time;
+		double total_ops_time;
+		double mean_ins_time;
+		double total_ins_time;
 		double mean_rb_time;
 		double total_rb_time;
-		unsigned int rw;
-		unsigned int rb;
-		double alpha;
-		std::size_t n;
+		unsigned int rw;        // rebuild window
+		unsigned int rb;        // number of rebuilds
+		double alpha;           // actual load factor after test
+		std::size_t n;          // actual size (smallest prime >= b)
 	};
 	std::vector<amort_stats_t> stats;
 
@@ -121,25 +124,25 @@ class amorttester {
 	              std::vector<uint32_t> *inserted,
 		      std::vector<uint32_t> *delorder,
 	              const std::vector<uint8_t> &opset,
-		      std::vector<duration<double>> *rbtimes)
+		      std::vector<duration<double>> *insert_times,
+		      std::vector<duration<double>> *rebuild_times)
 	{
-		hashtable::result r;
-		using enum hashtable::result;
+		enum hashtable::result r;
 
 		uint32_t k;
-		time_point<steady_clock> start, end;
+		time_point<steady_clock> t1, t2;
 
-		// TODO: to research: how to start and stop a timer repeatedly
-		duration<double> nonrb = 0, rb = 0;
-		 
-		start = steady_clock::now();
+		duration<double> insert_time(0), rebuild_time(0);
+
+		t1 = steady_clock::now();
 		for (int i=0; i<nops; ++i) {
 			if (opset[i] == 0) {
 				assert(ht->num_records() < ht->table_size());
 				assert(!testset->empty());
 				k = testset->back();
 				r = ht->insert(k, k);
-				if (r == SUCCESS || r == REBUILD) {
+				if (r == hashtable::result::SUCCESS ||
+				    r == hashtable::result::REBUILD) {
 					testset->pop_back();
 					inserted->push_back(k);
 				} else
@@ -149,7 +152,7 @@ class amorttester {
 				assert(!delorder->empty());
 				k = (*inserted)[delorder->back()];
 				r = ht->remove(k);
-				if (r != FAILURE) {
+				if (r != hashtable::result::FAILURE) {
 					(*inserted)[delorder->back()] =
 						inserted->back();
 					inserted->pop_back();
@@ -158,31 +161,28 @@ class amorttester {
 				else { std::cerr << "What?\n"; }
 			}
 
-			if (r == REBUILD) {
-				nonrb += (steady_clock::now() - start);
-
-				start = steady_clock::now();
+			if (r == hashtable::result::REBUILD) {
+				t2 = steady_clock::now();
+				insert_time += t2 - t1;
 				ht->rebuild();
-				rb += (steady_clock::now() - start);
-
-				start = steady_clock::now();
+				t1 = steady_clock::now();
+				rebuild_time += t1 - t2;
 			}
 		}
 
-		rbtimes->push_back(sum(rbt));
+		insert_times->push_back(insert_time);
+		rebuild_times->push_back(rebuild_time);
 	}
 
 	void float_timer(hashtable *ht,
                          std::vector<uint32_t> *testset,
 	                 std::vector<uint32_t> *inserted,
 	                 std::vector<duration<double>> *optimes,
-			 std::vector<duration<double>> *rbtimes)
+	                 std::vector<duration<double>> *insert_times,
+			 std::vector<duration<double>> *rebuild_times)
 	{
-		time_point<steady_clock> start, end;
+		time_point<steady_clock> t1,t2;
 		ht->rebuild(); 
-
-		// TODO: Calculate the total rebuild time per run
-		// TODO: Calculate the time spent not rebuilding too
 		ht->reset_perf_counts();
 		cout << "timing floating operations with rebuilds: ";
 
@@ -204,12 +204,17 @@ class amorttester {
 
 			ht->rebuilds = 0;
 			// timed section - floating ops and rebuild
-			start = steady_clock::now();
-			floating(ht, testset, inserted, &delorder, opset, rbtimes);
-			end = steady_clock::now();
-			optimes->push_back(end - start);
+			t1 = steady_clock::now();
+			floating(ht, testset, inserted, &delorder, opset,
+			         insert_times, rebuild_times);
+			t2 = steady_clock::now();
+			optimes->push_back(t2 - t1);
 
-			cout << "(" << ht->rebuilds << ").. " << std::flush;
+			cout << i+1 << "/" << ntests
+			     << "Time: " << optimes->back()
+			     << ", Inserting: " << insert_times->back()
+			     << ", Rebuilding: " << rebuild_times->back()
+			     << std::endl;
 
 			ht->rebuild();
 			ht->reset_perf_counts();
@@ -222,14 +227,17 @@ class amorttester {
 		for (amort_stats_t q : stats) {
 			o << q.nops << ", "
 			  << q.x << ", "
-		//	  << q.ops_time << ", "
+			  << q.n << ", "
 			  << q.mean_ops_time << ", "
 			  << q.median_ops_time << ", "
-			  << q.total_rb_time << ", "
+			  << q.total_ops_time << ", "
+			  << q.mean_ins_time << ", "
+			  << q.total_ins_time << ", "
+			  << q.mean_ops_time << ", "
+			  << q.total_ops_time << ", "
 			  << q.rw << ", "
 			  << q.rb << ", "
-			  << q.alpha << ", "
-			  << q.n << '\n';
+			  << q.alpha << '\n';
 		}
 
 		return o;
@@ -247,7 +255,7 @@ class amorttester {
 
 		ht.set_max_load_factor(1.0);
 
-		vector <duration<double>> op_times, rb_times;
+		vector <duration<double>> op_times, ins_times, rb_times;
 		double lf = 1.0 - (1.0 / x);
 
 		cout << ht.table_type() << " "
@@ -255,22 +263,27 @@ class amorttester {
 		     << x << std::endl;
 
 		loadtable(&ht, &testset, &inserted, lf);
-		float_timer(&ht, &testset, &inserted, &op_times, &rb_times);
+		float_timer(&ht, &testset, &inserted,
+		            &op_times, &ins_times, &rb_times);
 
 		amort_stats_t q {
-			.b                   = b,
-			.x                   = x,
-			.nops                = nops,
-			.ops_time            = op_times,
-			.mean_ops_time       = mean(op_times),
-			.median_ops_time     = median(op_times),
-			.mean_rb_time       = sum(rb_times),
-			.rw                  =
-				(unsigned int)(ht.table_size() / (4*x)),
-			.rb                  =
-				(unsigned int)(nops * 4 * x / ht.table_size()),
-			.alpha               = ht.load_factor(),
-			.n                   = ht.table_size(),
+			.b                = b,
+			.x                = x,
+			.nops             = nops,
+			.ops_time         = op_times,
+			.mean_ops_time    = mean(op_times),
+			.median_ops_time  = median(op_times),
+			.total_ops_time   = sum(op_times),
+			.mean_ins_time    = mean(ins_times),
+			.total_ins_time   = sum(ins_times),
+			.mean_rb_time     = mean(rb_times),
+			.total_rb_time    = sum(rb_times),
+			.rw               =
+			       (unsigned int)(ht.table_size() / (4*x)),
+			.rb               =
+			       (unsigned int)(nops * 4 * x / ht.table_size()),
+			.alpha            = ht.load_factor(),
+			.n                = ht.table_size(),
 		};
 
 		stats.push_back(q);

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <sched.h>
 
 #include "pcg_random.hpp"
 #include "primes.h"
@@ -24,7 +25,7 @@ int main(int argc, char **argv)
 //		 250'000'000, 500'000'000, 750'000'000, 1'000'000'000,
 	};
 
-	const int nops = 25'000'000;   // ops per test
+	const int nops = 40'000'000;   // ops per test
 	const int nt = 5;              // number of tests to average 
 
 	for(double i=2.0; i<=20.0; i+=0.5) xs.push_back(i);
@@ -36,52 +37,55 @@ int main(int argc, char **argv)
 	else
 		label = "";
 
-	{
-		std::ofstream f(label + "soa_amort_x");
-		f << "\n----- graveyard, structure of arrays, by x ------------------------\n";
-		for (auto x : xs) {
-			f << "ops per test, x, n, total mean time, total median time, total time, "
-			     "mean ops time, total ops time, mean rb time, total rb time, "
-			     "rb window, rebuilds, lf\n";
-			for (auto b : bs)
-				f << amorttester<graveyard_soa<>> (rng, x, b, nops, nt) << std::flush;
-		}
-	}
 
-
+	// AOS X
 	{
 		std::ofstream f(label + "aos_amort_x");
-		f << "\n----- graveyard, array of structures, by x ------------------------\n";
+		f << "\n----- graveyard, array of structures, by x [core " << sched_getcpu() << "]\n";
+		f << "ops per test, x, n, total mean time, total median time, total time, "
+		     "mean ops time, total ops time, mean rb time, total rb time, "
+		     "rb window, rebuilds, lf\n";
 		for (auto x : xs) {
-			f << "ops per test, x, n, total mean time, total median time, total time, "
-			     "mean ops time, total ops time, mean rb time, total rb time, "
-			     "rb window, rebuilds, lf\n";
 			for (auto b : bs)
 				f << amorttester<graveyard_aos<>> (rng, x, b, nops, nt) << std::flush;
 		}
 	}
-
+	// SOA X
 	{
-		std::ofstream f(label + "soa_amort_b");
-		f << "\n----- graveyard, structure of arrays, by b ------------------------\n";
-		for (auto b : bs) {
-			f << "ops per test, x, n, total mean time, total median time, total time, "
-			     "mean ops time, total ops time, mean rb time, total rb time, "
-			     "rb window, rebuilds, lf\n";
-			for (auto x : xs)
+		std::ofstream f(label + "soa_amort_x");
+		f << "\n----- graveyard, structure of arrays, by x, [core " << sched_getcpu() << "]\n";
+		f << "ops per test, x, n, total mean time, total median time, total time, "
+		     "mean ops time, total ops time, mean rb time, total rb time, "
+		     "rb window, rebuilds, lf\n";
+		for (auto x : xs) {
+			for (auto b : bs)
 				f << amorttester<graveyard_soa<>> (rng, x, b, nops, nt) << std::flush;
 		}
 	}
 
+	// AOS B
 	{
 		std::ofstream f(label + "aos_amort_b");
-		f << "\n----- graveyard, arrays of structures, by b ------------------------\n";
+		f << "\n----- graveyard, array of structures, by b [core " << sched_getcpu() << "]\n";
+		f << "ops per test, x, n, total mean time, total median time, total time, "
+		     "mean ops time, total ops time, mean rb time, total rb time, "
+		     "rb window, rebuilds, lf\n";
 		for (auto b : bs) {
-			f << "ops per test, x, n, total mean time, total median time, total time, "
-			     "mean ops time, total ops time, mean rb time, total rb time, "
-			     "rb window, rebuilds, lf\n";
 			for (auto x : xs)
 				f << amorttester<graveyard_aos<>> (rng, x, b, nops, nt) << std::flush;
+		}
+	}
+
+	// SOA B
+	{
+		std::ofstream f(label + "soa_amort_b");
+		f << "\n----- graveyard, structure of arrays, by b, [core " << sched_getcpu() << "]\n";
+		f << "ops per test, x, n, total mean time, total median time, total time, "
+		     "mean ops time, total ops time, mean rb time, total rb time, "
+		     "rb window, rebuilds, lf\n";
+		for (auto b : bs) {
+			for (auto x : xs)
+				f << amorttester<graveyard_soa<>> (rng, x, b, nops, nt) << std::flush;
 		}
 	}
 

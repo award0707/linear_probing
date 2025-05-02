@@ -114,6 +114,10 @@ class graveyard_aos {
 		std::size_t table_size_bytes() const {
 			return buckets*sizeof(record_t);
 		}
+		std::size_t rec_width() const { return sizeof(table[0]); }
+		std::size_t key_width() const { return sizeof(table[0].key); }
+		std::size_t value_width() const { return sizeof(table[0].value); }
+		std::size_t state_width() const { return sizeof(states[0]); }
 		uint32_t num_records() const { return records; }
 
 		// debugging
@@ -235,6 +239,10 @@ class graveyard_soa {
 			return buckets
 			       * (sizeof(K)+sizeof(V)+sizeof(slot_state));
 		}
+		std::size_t rec_width() const { return sizeof(table.key[0]); }
+		std::size_t key_width() const { return sizeof(table.key[0]); }
+		std::size_t value_width() const { return sizeof(table.value[0]); }
+		std::size_t state_width() const { return sizeof(table.state[0]); }
 		uint32_t num_records() const { return records; }
 
 		// debugging

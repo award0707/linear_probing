@@ -170,6 +170,7 @@ class amorttester {
 				rebuild_time += t1 - t2;
 			}
 		}
+		insert_time += steady_clock::now() - t1;
 
 		insert_times->push_back(insert_time);
 		rebuild_times->push_back(rebuild_time);
@@ -185,7 +186,7 @@ class amorttester {
 		time_point<steady_clock> t1,t2;
 		ht->rebuild(); 
 		ht->reset_perf_counts();
-		cout << "timing floating operations with rebuilds: ";
+		cout << "Timing floating operations with rebuilds.\n";
 
 		for (int i=0; i<ntests; ++i) {
 			cout << i+1 << "/" << ntests << std::flush;
@@ -232,8 +233,8 @@ class amorttester {
 			  << q.total_ops_time << ", "
 			  << q.mean_ins_time << ", "
 			  << q.total_ins_time << ", "
-			  << q.mean_ops_time << ", "
-			  << q.total_ops_time << ", "
+			  << q.mean_rb_time << ", "
+			  << q.total_rb_time << ", "
 			  << q.rw << ", "
 			  << q.rb << ", "
 			  << q.alpha << '\n';
@@ -247,8 +248,6 @@ class amorttester {
 		std::vector <uint32_t> testset;
 		std::vector <uint32_t> inserted;
 		hashtable ht(next_prime(b));
-		type = ht.table_type();
-		cout << type << "\n";
 
 		gen_testset(&testset, ht.table_size());
 
@@ -258,8 +257,13 @@ class amorttester {
 		double lf = 1.0 - (1.0 / x);
 
 		cout << ht.table_type() << " "
-		     << ht.table_size() << ", x="
-		     << x << std::endl;
+		     << ", slots=" << ht.table_size()
+		     << ", x=" << x
+		     << ", rec width=" << ht.rec_width()
+		     << " [k:" << ht.key_width()
+		     << ",v:" << ht.value_width()
+		     << "], state width=" << ht.state_width()
+		     << std::endl;
 
 		loadtable(&ht, &testset, &inserted, lf);
 		float_timer(&ht, &testset, &inserted,

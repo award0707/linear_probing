@@ -12,7 +12,7 @@
 #define INFINITE	/* test in an infinite loop, breaking only on error */
 #define READD_BEFORE	/* do a readd test before rebuilding */
 
-using hashtable = graveyard_aos<uint32_t,int>;
+using hashtable = graveyard_soa<uint32_t,uint32_t>;
 using result = hashtable::result;
 
 bool check(hashtable &h)
@@ -51,7 +51,7 @@ main()
 	while (1) {
 #endif
 		hashtable t(SIZE);
-		std::vector<int> keys(SIZE,0);
+		std::vector<uint32_t> keys(SIZE,0);
 
 		t.disable_rebuilds = true;
 		std::cout << t.table_type() << ": start run #" << ++run << "\n";
@@ -59,7 +59,7 @@ main()
 		// fill up the table completely
 		t.set_max_load_factor(1.0);
 		for(int i=0; i<SIZE; i++) {
-			int k = testset(rng);
+			uint32_t k = testset(rng);
 			result r = t.insert(k,k*2);
 			switch(r) {
 			case result::SUCCESS: // fall through
@@ -127,7 +127,7 @@ main()
 		display(t, "rebuilt again");
 		// check if any keys got lost
 		for (size_t i=0; i<keys.size(); i++) {
-			int x;
+			uint32_t x;
 			if (!t.query(keys[i],&x)) {
 				std::cout << "Lost key " << keys[i] << "\n";
 			}
@@ -137,7 +137,7 @@ main()
 		for(int i=0; i<20000; i++) {
 			uniform_int_distribution<> pick(0,keys.size()-1);
 			int p = pick(rng);
-			int x;
+			uint32_t x;
 			t.query(keys[p], &x);
 			assert(x == keys[p] * 2);
 		}

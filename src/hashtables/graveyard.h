@@ -8,7 +8,7 @@
 #include <map>
 
 template <typename K = uint32_t,
-          typename V = int>
+          typename V = uint32_t>
 class graveyard_aos {
 	private:
 		enum slot_state { FULL, EMPTY, TOMB };
@@ -124,7 +124,7 @@ class graveyard_aos {
 };
 
 template <typename K = uint32_t,
-          typename V = int>
+          typename V = uint32_t>
 class graveyard_soa {
 	private:
 		enum slot_state { FULL, EMPTY, TOMB };

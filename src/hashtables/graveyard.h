@@ -8,7 +8,7 @@
 #include <map>
 
 template <typename K = uint32_t,
-          typename V = int>
+          typename V = uint32_t>
 class graveyard_aos {
 	private:
 		enum slot_state { FULL, EMPTY, TOMB };
@@ -17,8 +17,8 @@ class graveyard_aos {
 		struct record_t {
 			K key;
 			V value;
-			slot_state state;
 		} *table;
+		enum slot_state *states;
 
 		uint32_t buckets;
 		uint32_t records;
@@ -38,12 +38,14 @@ class graveyard_aos {
 		uint32_t shift(uint32_t slot);
 		int rebuild_seek(uint32_t x, uint32_t &end);
 		uint32_t rebuild_shift(uint32_t slot);
+		inline void slotmove(uint32_t destidx, uint32_t srcidx,
+		     size_t count);
 
 		void reset_rebuild_window();
 		void update_misses(uint64_t misses, enum optype op);
 
-		inline slot_state state(uint32_t k) const {
-			return table[k].state;
+		inline slot_state& state(uint32_t k) const {
+			return states[k];
 		}
 		inline K& key(uint32_t k) const {
 			return table[k].key;
@@ -57,9 +59,9 @@ class graveyard_aos {
 		inline void setvalue(uint32_t k, V v)
 			{ table[k].value = v; }
 
-		inline void setfull(uint32_t k) { table[k].state = FULL; }
-		inline void setempty(uint32_t k) { table[k].state = EMPTY; }
-		inline void settomb(uint32_t k) { table[k].state = TOMB; }
+		inline void setfull(uint32_t k) { states[k] = FULL; }
+		inline void setempty(uint32_t k) { states[k] = EMPTY; }
+		inline void settomb(uint32_t k) { states[k] = TOMB; }
 
 		inline bool full(uint32_t k) const {
 			return state(k) == FULL;
@@ -112,6 +114,10 @@ class graveyard_aos {
 		std::size_t table_size_bytes() const {
 			return buckets*sizeof(record_t);
 		}
+		std::size_t rec_width() const { return sizeof(table[0]); }
+		std::size_t key_width() const { return sizeof(table[0].key); }
+		std::size_t value_width() const { return sizeof(table[0].value); }
+		std::size_t state_width() const { return sizeof(states[0]); }
 		uint32_t num_records() const { return records; }
 
 		// debugging
@@ -122,7 +128,7 @@ class graveyard_aos {
 };
 
 template <typename K = uint32_t,
-          typename V = int>
+          typename V = uint32_t>
 class graveyard_soa {
 	private:
 		enum slot_state { FULL, EMPTY, TOMB };
@@ -233,6 +239,10 @@ class graveyard_soa {
 			return buckets
 			       * (sizeof(K)+sizeof(V)+sizeof(slot_state));
 		}
+		std::size_t rec_width() const { return sizeof(table.key[0]); }
+		std::size_t key_width() const { return sizeof(table.key[0]); }
+		std::size_t value_width() const { return sizeof(table.value[0]); }
+		std::size_t state_width() const { return sizeof(table.state[0]); }
 		uint32_t num_records() const { return records; }
 
 		// debugging

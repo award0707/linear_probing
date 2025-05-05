@@ -254,7 +254,7 @@ graveyard_soa<K,V>::insert(K k, V v, bool rebuilding)
 
 	if (!empty(slot)) {
 		uint32_t end;
-		end = rebuilding ? rebuild_shift(slot) : shift(slot);
+		end = (!rebuilding) ? shift(slot) : rebuild_shift(slot);
 		if ((end < slot || wrapped) && end >= table_head)
 			++table_head;
 		if (!rebuilding) {
@@ -374,7 +374,9 @@ graveyard_soa<K, V>::rebuild()
 						if (hash(key(q)) > p)
 							setempty(p);
 						else {
-							slotmove(p, q, 1);
+							table.key[p] = table.key[q];
+							table.value[p] = table.value[q];
+							table.state[p] = table.state[q];
 							settomb(q);
 							++tombs;
 						}

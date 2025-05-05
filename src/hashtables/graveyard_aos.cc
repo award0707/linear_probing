@@ -18,10 +18,12 @@ graveyard_aos(uint32_t b)
 		prime_index++;
 	
 	table = new record_t[b];
-	if (!table) cerr << "Couldn't allocate\n";
+	if (!table) cerr << "Couldn't allocate table\n";
+	states = new enum slot_state[b];
+	if (!states) cerr << "Couldn't allocate states\n";
 	
 	for(uint32_t i=0; i<b; i++) 
-		table[i].state = EMPTY;
+		states[i] = EMPTY;
 
 	max_load_factor = 0.5;
 	miss_running_avg = 0;
@@ -43,6 +45,7 @@ graveyard_aos<K, V>::
 ~graveyard_aos()
 {
 	delete[] table;
+	delete[] states;
 }
 
 template<typename K, typename V>
@@ -58,23 +61,26 @@ resize(uint32_t b)
 {
 	uint32_t oldbuckets = buckets;
 	record_t *oldtable = table;
+	slot_state *oldstates = states;
 
 	cerr << "resize(): rehashing into " << b << " buckets\n";
 	
 	table = new record_t[b];
-	if (!table) cerr << "couldn't allocate for resize\n"; 
+	if (!table) cerr << "resize: couldn't allocate table\n"; 
+	states = new enum slot_state[b];
+	if (!states) cerr << "resize: couldn't allocate states\n";
 	for(uint32_t i=0; i<b; ++i) 
-		table[i].state = EMPTY;
+		states[i] = EMPTY;
 	records = 0;
 	tombs = 0;
 	buckets = b;
 
-	for(uint32_t i=0; i<oldbuckets; ++i) {
-		if (oldtable[i].state == FULL)
+	for(uint32_t i=0; i<oldbuckets; ++i) 
+		if (oldstates[i] == FULL)
 			insert(oldtable[i].key, oldtable[i].value, true);
-	}
 
 	delete[] oldtable;
+	delete[] oldstates;
 	resizes++;	
 }
 
@@ -126,8 +132,16 @@ probe(K k, uint32_t *slot, optype operation, bool* wrapped)
 	return res;
 }
 
-// find the end of the cluster, then slide records 1 to the right as a block
+template<typename K, typename V>
+inline void
+graveyard_aos<K, V>::slotmove(uint32_t destidx, uint32_t srcidx, size_t count)
+{
+	std::memmove(&table[destidx], &table[srcidx], sizeof(record_t) * count);
+	std::memmove(&states[destidx], &states[srcidx],
+	             sizeof(enum slot_state) * count);
+}
 
+// find the end of the cluster, then slide records 1 to the right as a block
 template<typename K, typename V>
 uint32_t graveyard_aos<K, V>::
 shift(uint32_t start)
@@ -143,13 +157,11 @@ shift(uint32_t start)
 	if (tomb(end)) --tombs; // made use of a tombstone
 
 	if (end < start) {
-		memmove(&table[1], &table[0], sizeof(record_t)*end);
-		table[0] = table[last];
-		memmove(&table[start+1],
-			&table[start], sizeof(record_t)*(last-start));
+		slotmove(1, 0, end);
+		slotmove(0, last, 1);
+		slotmove(start+1, start, last-start);
 	} else
-		memmove(&table[start+1],
-			&table[start], sizeof(record_t)*(end-start));
+		slotmove(start+1, start, end-start);
 
 	return end;
 }
@@ -180,6 +192,7 @@ uint32_t graveyard_aos<K, V>::
 rebuild_shift(uint32_t start)
 {
 	record_t lastscratch, scratch;
+	enum slot_state lastscratch_state, scratch_state;
 	bool valid = false;
 	uint32_t end;
 
@@ -187,20 +200,28 @@ rebuild_shift(uint32_t start)
 		int res = rebuild_seek(start, end);
 
 		scratch = table[end];
-		std::memmove(&table[start+1],&table[start],
-		             (end-start)*sizeof table[start]);
-		if (valid) table[start] = lastscratch;
+		scratch_state = states[end];
+
+		slotmove(start+1, start, end-start);
+		if (valid) {
+			table[start] = lastscratch;
+			states[start] = lastscratch_state;
+		}
 		lastscratch = scratch;
+		lastscratch_state = scratch_state;
 		valid = true;
 
-		if (res == 0) return end;
+		if (res == 0) break;
 		start = end + 2;
 		if (res == 2 || (res == 1 && start > buckets-1)) {
 			end = rebuild_shift(0);
 			table[0] = lastscratch;
-			return end;
+			states[0] = lastscratch_state;
+			break;
 		}
 	}
+
+	return end;
 }
 
 template<typename K, typename V>
@@ -224,7 +245,7 @@ insert(K k, V v, bool rebuilding)
 
 	if (!empty(slot)) {
 		uint32_t end;
-		end = (!rebuilding) ? shift(slot) : rebuild_shift(slot);
+		end = !rebuilding ? shift(slot) : rebuild_shift(slot);
 		if (((end < slot) || wrapped) && end >= table_head)
 			++table_head;
 		if (!rebuilding) {
@@ -312,21 +333,26 @@ rebuild()
 {
 	int tombcount = (buckets/2) * (1.0 - load_factor()); // 1-a = 1/x
 	double interval = tombcount ? (buckets / tombcount) : buckets;
+	struct rec {
+		record_t kv;
+		enum slot_state state;
+	};
 
 	// save the part of the table that wrapped for reinsertion later
-	std::vector<record_t> overflow;
+	std::vector<struct rec> overflow;
 	for(uint32_t p = 0; p < table_head; ++p) 
 		if (full(p)) {
-			overflow.push_back(table[p]);
+			overflow.push_back({table[p], states[p]});
 			--records;
 			settomb(p);
 		}
 	table_head = 0;
+	tombs = 0;
 
-	boost::circular_buffer<record_t> queue(tombcount);
+	boost::circular_buffer<struct rec> queue(tombcount);
 	for(uint32_t p = 0, q = 1, x = interval; p < buckets; p++) {
 		if (--x == 0) {
-			if (full(p)) queue.push_back(table[p]);
+			if (full(p)) queue.push_back({table[p], states[p]});
 			max_rebuild_queue = std::max(max_rebuild_queue,
 			                             (int)queue.size());
 			settomb(p);
@@ -340,14 +366,18 @@ rebuild()
 							setempty(p);
 						else {
 							table[p] = table[q];
+							states[p] = states[q];
 							settomb(q);
+							++tombs;
 						}
 					} else
 						setempty(p);
 				}
 			} else {
-				if (full(p)) queue.push_back(table[p]);
-				table[p] = queue.front();
+				if (full(p)) queue.push_back({table[p],
+				                              states[p]});
+				table[p] = queue.front().kv;
+				states[p] = queue.front().state;
 				queue.pop_front();
 			}
 		}
@@ -355,9 +385,9 @@ rebuild()
 	}
 
 	records -= queue.size(); // avoid double count on reinsert
-	for (record_t r : queue) insert(r.key, r.value, true);
+	for (rec r : queue) insert(r.kv.key, r.kv.value, true);
 
-	for (record_t r : overflow) insert(r.key, r.value, true);
+	for (rec r : overflow) insert(r.kv.key, r.kv.value, true);
 	reset_rebuild_window();	
 	++rebuilds;
 }
@@ -519,7 +549,7 @@ check_ordering()
 	uint32_t p = table_head, q;
 	bool wrapped = false, res = true;
 
-	while (table[p].state != FULL) ++p;
+	while (states[p] != FULL) ++p;
 	q = p;
 	while(1) {
 		do {
@@ -527,7 +557,7 @@ check_ordering()
 				q = 0;
 				wrapped = true;
 			}
-		} while (table[q].state != FULL);
+		} while (states[q] != FULL);
 
 		if (wrapped && q >= table_head) break;
 
@@ -561,9 +591,9 @@ debug_key_search(K k)
 	
 	if (found) {
 		std::cerr << "found it in slot " << x << "!\n";
-		if (table[x].state == TOMB) {
+		if (states[x] == TOMB) {
 			std::cerr << "it is marked as a tombstone\n";
-		} else if (table[x].state == EMPTY) {
+		} else if (states[x] == EMPTY) {
 			std::cerr << "it is marked empty\n";
 		}
 		std::cerr << "empty before it: " << b << ".\n";

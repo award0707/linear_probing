@@ -4,12 +4,13 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include <sstream>
 #include <unistd.h>
 #include <vector>
 #include <numeric>
 #include <random>
 #include <chrono>
+//#define NDEBUG
+#include <cassert>
 
 #include "pcg_random.hpp"
 #include "primes.h"
@@ -61,14 +62,15 @@ class amorttester {
 	void
 	gen_testset(std::vector<uint32_t>* loadset, uint32_t n)
 	{
-		cout << "Generate test set\n";
 		n += nops * ntests;
+		cout << "Reserve testset, size " << n << "..." << std::flush; 
 		loadset->reserve(n);
+		cout << "done. Generate testset..." << std::flush; 
 		selsample(loadset,n,std::numeric_limits<uint32_t>::max(),rng);
 
-		cout << "Loadset generated\n";
+		cout << "done. Shuffling..." << std::flush;
 		std::shuffle(std::begin(*loadset), std::end(*loadset), rng);
-		cout << "Loadset shuffled, size = " << loadset->size() << "\n";
+		cout << "done, size = " << loadset->size() << "\n";
 	}
 
 	// generate random numbers and insert into the table.
@@ -89,7 +91,7 @@ class amorttester {
 		for (int i = 0; i < loadops; ++i) {
 			k = loadset->back();
 			loadset->pop_back();
-			result r = ht->insert(k, k>>2);
+			result r = ht->insert(k, k);
 			switch(r) {
 			case result::SUCCESS:
 				inserted->push_back(k);
@@ -151,6 +153,9 @@ class amorttester {
 				assert(!inserted->empty());
 				assert(!delorder->empty());
 				k = (*inserted)[delorder->back()];
+				/* uint32_t v; // check
+				   assert(ht->query(k,&v)); 
+				   assert(v == k); */
 				r = ht->remove(k);
 				if (r != hashtable::result::FAILURE) {
 					(*inserted)[delorder->back()] =
@@ -169,6 +174,7 @@ class amorttester {
 				rebuild_time += t1 - t2;
 			}
 		}
+		insert_time += steady_clock::now() - t1;
 
 		insert_times->push_back(insert_time);
 		rebuild_times->push_back(rebuild_time);
@@ -184,10 +190,10 @@ class amorttester {
 		time_point<steady_clock> t1,t2;
 		ht->rebuild(); 
 		ht->reset_perf_counts();
-		cout << "timing floating operations with rebuilds: ";
+		cout << "Timing floating operations with rebuilds.\n";
 
 		for (int i=0; i<ntests; ++i) {
-			cout << i+1 << std::flush;
+			cout << i+1 << "/" << ntests << std::flush;
 			// operations 
 			std::vector<uint8_t> opset;
 			opset.reserve(nops);
@@ -200,7 +206,6 @@ class amorttester {
 			std::uniform_int_distribution<> U(0,inserted->size()/2);
 			while((int)delorder.size() < nops/2+1) 
 				delorder.push_back(U(rng));
-			cout << ".." << std::flush;
 
 			ht->rebuilds = 0;
 			// timed section - floating ops and rebuild
@@ -210,8 +215,7 @@ class amorttester {
 			t2 = steady_clock::now();
 			optimes->push_back(t2 - t1);
 
-			cout << i+1 << "/" << ntests
-			     << "Time: " << optimes->back()
+			cout << " Time: " << optimes->back()
 			     << ", Inserting: " << insert_times->back()
 			     << ", Rebuilding: " << rebuild_times->back()
 			     << std::endl;
@@ -233,8 +237,8 @@ class amorttester {
 			  << q.total_ops_time << ", "
 			  << q.mean_ins_time << ", "
 			  << q.total_ins_time << ", "
-			  << q.mean_ops_time << ", "
-			  << q.total_ops_time << ", "
+			  << q.mean_rb_time << ", "
+			  << q.total_rb_time << ", "
 			  << q.rw << ", "
 			  << q.rb << ", "
 			  << q.alpha << '\n';
@@ -248,8 +252,6 @@ class amorttester {
 		std::vector <uint32_t> testset;
 		std::vector <uint32_t> inserted;
 		hashtable ht(next_prime(b));
-		type = ht.table_type();
-		cout << type << "\n";
 
 		gen_testset(&testset, ht.table_size());
 
@@ -259,8 +261,13 @@ class amorttester {
 		double lf = 1.0 - (1.0 / x);
 
 		cout << ht.table_type() << " "
-		     << ht.table_size() << ", x="
-		     << x << std::endl;
+		     << ", slots=" << ht.table_size()
+		     << ", x=" << x
+		     << ", rec width=" << ht.rec_width()
+		     << " [k:" << ht.key_width()
+		     << ",v:" << ht.value_width()
+		     << "], state width=" << ht.state_width()
+		     << std::endl;
 
 		loadtable(&ht, &testset, &inserted, lf);
 		float_timer(&ht, &testset, &inserted,

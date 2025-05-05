@@ -4,12 +4,13 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include <sstream>
 #include <unistd.h>
 #include <vector>
 #include <numeric>
 #include <random>
 #include <chrono>
+//#define NDEBUG
+#include <cassert>
 
 #include "pcg_random.hpp"
 #include "primes.h"
@@ -90,7 +91,7 @@ class amorttester {
 		for (int i = 0; i < loadops; ++i) {
 			k = loadset->back();
 			loadset->pop_back();
-			result r = ht->insert(k, k>>2);
+			result r = ht->insert(k, k);
 			switch(r) {
 			case result::SUCCESS:
 				inserted->push_back(k);
@@ -152,6 +153,9 @@ class amorttester {
 				assert(!inserted->empty());
 				assert(!delorder->empty());
 				k = (*inserted)[delorder->back()];
+				/* uint32_t v; // check
+				   assert(ht->query(k,&v)); 
+				   assert(v == k); */
 				r = ht->remove(k);
 				if (r != hashtable::result::FAILURE) {
 					(*inserted)[delorder->back()] =

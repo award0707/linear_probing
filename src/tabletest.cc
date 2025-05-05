@@ -60,7 +60,7 @@ main()
 		t.set_max_load_factor(1.0);
 		for(int i=0; i<SIZE; i++) {
 			uint32_t k = testset(rng);
-			result r = t.insert(k,k*2);
+			result r = t.insert(k,k);
 			switch(r) {
 			case result::SUCCESS: // fall through
 			case result::REBUILD: keys[i]=k; break;
@@ -94,7 +94,7 @@ main()
 		// add records back before the rebuild
 		for(int i=0; i<SIZE/5; i++) {
 			int k = testset(rng);
-			if (t.insert(k,k*2) != result::FAILURE)
+			if (t.insert(k,k) != result::FAILURE)
 				keys.push_back(k);
 			else
 				--i;
@@ -111,7 +111,7 @@ main()
 		// add some more records back after the rebuild
 		for(int i=0; i<SIZE/5; i++) {
 			int k = testset(rng);
-			result r = t.insert(k,k*2);
+			result r = t.insert(k,k);
 			switch(r) {
 			case result::SUCCESS: // fall through
 			case result::REBUILD: keys[i]=k; break;
@@ -139,7 +139,7 @@ main()
 			int p = pick(rng);
 			uint32_t x;
 			t.query(keys[p], &x);
-			assert(x == keys[p] * 2);
+			assert(x == keys[p]);
 		}
 
 		display(t, "final");

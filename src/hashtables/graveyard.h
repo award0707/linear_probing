@@ -44,7 +44,7 @@ class graveyard_aos {
 		void reset_rebuild_window();
 		void update_misses(uint64_t misses, enum optype op);
 
-		inline slot_state state(uint32_t k) const {
+		inline slot_state& state(uint32_t k) const {
 			return states[k];
 		}
 		inline K& key(uint32_t k) const {

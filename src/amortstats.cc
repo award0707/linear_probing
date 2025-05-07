@@ -17,18 +17,18 @@ pcg64 rng(seed_source);
 int main(int argc, char **argv)
 {
 	vector<double> xs;
-	const vector<uint64_t> bs { // 10'000,
-		 /* 25'000, 50'000, 75'000, 100'000, */
-		 1'000'000, 
+	const vector<uint64_t> bs { // 10'000, 25'000, 50'000, 75'000,
+		 100'000, 
+		 //1'000'000, 
 		 /* 2'500'000, 5'000'000, 7'500'000, 10'000'000, */
 		 /* 25'000'000, 50'000'000, 75'000'000, 100'000'000, */
 		 /* 250'000'000, 500'000'000, 750'000'000, */
 	};
 
-	const int nops = 10'000'000;   // ops per test
+	const int nops = 1'000'000;   // ops per test
 	const int nt = 10;              // number of tests to average 
 
-	for(double i=6; i<=25; i+=0.2) xs.push_back(i);
+	for(double i=2; i<=30; i+=0.2) xs.push_back(i);
 	//for(double i=21; i<=30; i+=1) xs.push_back(i);
 
 	std::string label;

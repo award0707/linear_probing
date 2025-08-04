@@ -14,7 +14,7 @@ class graveyard_aos {
 		enum slot_state { FULL, EMPTY, TOMB };
 		enum optype { INSERT, QUERY, REMOVE, REBUILD_INS };
 
-		struct record_t {
+		struct record {
 			K key;
 			V value;
 		} *table;
@@ -112,7 +112,7 @@ class graveyard_aos {
 		double avg_misses() const { return miss_running_avg; }
 		uint32_t table_size() const { return buckets; }
 		std::size_t table_size_bytes() const {
-			return buckets*sizeof(record_t);
+			return buckets*sizeof(record);
 		}
 		std::size_t rec_width() const { return sizeof(table[0]); }
 		std::size_t key_width() const { return sizeof(table[0].key); }

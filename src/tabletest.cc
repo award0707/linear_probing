@@ -9,10 +9,11 @@
 #include "linear.h"
 
 #define SIZE 400
-#define INFINITE	/* test in an infinite loop, breaking only on error */
+//#define INFINITE	/* test in an infinite loop, breaking only on error */
+#define NUMTESTS 100
 #define READD_BEFORE	/* do a readd test before rebuilding */
 
-using hashtable = graveyard_aos<uint32_t,uint32_t>;
+using hashtable = linear_aos<uint32_t,uint32_t>;
 using result = hashtable::result;
 
 bool check(hashtable &h)
@@ -49,6 +50,9 @@ main()
 
 #ifdef INFINITE
 	while (1) {
+#else
+	int nt = NUMTESTS;
+	while (nt--) {
 #endif
 		hashtable t(SIZE);
 		std::vector<uint32_t> keys(SIZE,0);
@@ -146,8 +150,6 @@ main()
 		std::cout << "\n\n";
 		if (!check(t)) return 1;
 
-#ifdef INFINITE
 	}
-#endif
 	return 0;
 }

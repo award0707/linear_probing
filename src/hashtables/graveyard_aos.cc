@@ -17,7 +17,7 @@ graveyard_aos(uint32_t b)
 	while(b > primes[prime_index]) 
 		prime_index++;
 	
-	table = new record_t[b];
+	table = new record[b];
 	if (!table) cerr << "Couldn't allocate table\n";
 	states = new enum slot_state[b];
 	if (!states) cerr << "Couldn't allocate states\n";
@@ -60,12 +60,12 @@ void graveyard_aos<K, V>::
 resize(uint32_t b)
 {
 	uint32_t oldbuckets = buckets;
-	record_t *oldtable = table;
+	record *oldtable = table;
 	slot_state *oldstates = states;
 
 	cerr << "resize(): rehashing into " << b << " buckets\n";
 	
-	table = new record_t[b];
+	table = new record[b];
 	if (!table) cerr << "resize: couldn't allocate table\n"; 
 	states = new enum slot_state[b];
 	if (!states) cerr << "resize: couldn't allocate states\n";
@@ -136,7 +136,7 @@ template<typename K, typename V>
 inline void
 graveyard_aos<K, V>::slotmove(uint32_t destidx, uint32_t srcidx, size_t count)
 {
-	std::memmove(&table[destidx], &table[srcidx], sizeof(record_t) * count);
+	std::memmove(&table[destidx], &table[srcidx], sizeof(record) * count);
 	std::memmove(&states[destidx], &states[srcidx],
 	             sizeof(enum slot_state) * count);
 }
@@ -191,7 +191,7 @@ template<typename K, typename V>
 uint32_t graveyard_aos<K, V>::
 rebuild_shift(uint32_t start)
 {
-	record_t lastscratch, scratch;
+	record lastscratch, scratch;
 	enum slot_state lastscratch_state, scratch_state;
 	bool valid = false;
 	uint32_t end;
@@ -333,61 +333,48 @@ rebuild()
 {
 	int tombcount = (buckets/2) * (1.0 - load_factor()); // 1-a = 1/x
 	double interval = tombcount ? (buckets / tombcount) : buckets;
-	struct rec {
-		record_t kv;
-		enum slot_state state;
-	};
 
 	// save the part of the table that wrapped for reinsertion later
-	std::vector<struct rec> overflow;
+	std::vector<struct record> overflow;
 	for(uint32_t p = 0; p < table_head; ++p) 
 		if (full(p)) {
-			overflow.push_back({table[p], states[p]});
+			overflow.push_back(table[p]);
 			--records;
 			settomb(p);
 		}
 	table_head = 0;
 	tombs = 0;
 
-	boost::circular_buffer<struct rec> queue(tombcount);
-	for(uint32_t p = 0, q = 1, x = interval; p < buckets; p++) {
-		if (--x == 0) {
-			if (full(p)) queue.push_back({table[p], states[p]});
+	boost::circular_buffer<struct record> queue(tombcount);
+	for(uint32_t p = 0, q = 1, x = interval; p < buckets; ++p) {
+		if (!--x) {
+			x = interval;
+			if (full(p)) queue.push_back(table[p]);
+			settomb(p);
 			max_rebuild_queue = std::max(max_rebuild_queue,
 			                             (int)queue.size());
-			settomb(p);
-			x = interval;
-		} else {
-			if (queue.empty()) {
-				if (tomb(p)) {
-					while(q < buckets && !full(q)) q++;
-					if (q < buckets) {
-						if (hash(key(q)) > p)
-							setempty(p);
-						else {
-							table[p] = table[q];
-							states[p] = states[q];
-							settomb(q);
-							++tombs;
-						}
-					} else
-						setempty(p);
-				}
-			} else {
-				if (full(p)) queue.push_back({table[p],
-				                              states[p]});
-				table[p] = queue.front().kv;
-				states[p] = queue.front().state;
-				queue.pop_front();
-			}
+		} else if (queue.empty() && tomb(p)) {
+			while(q < buckets && !full(q)) ++q;
+			if (q < buckets && hash(key(q)) <= p) {
+				table[p] = table[q];
+				setfull(p);
+				settomb(q);
+				++tombs;
+			} else
+				setempty(p);
+		} else if (!queue.empty()) {
+			if (full(p)) queue.push_back(table[p]);
+			table[p] = queue.front();
+			setfull(p);
+			queue.pop_front();
 		}
 		if (q <= p) q = p + 1;
 	}
 
 	records -= queue.size(); // avoid double count on reinsert
-	for (rec r : queue) insert(r.kv.key, r.kv.value, true);
+	for (record r : queue) insert(r.key, r.value, true);
 
-	for (rec r : overflow) insert(r.kv.key, r.kv.value, true);
+	for (record r : overflow) insert(r.key, r.value, true);
 	reset_rebuild_window();	
 	++rebuilds;
 }

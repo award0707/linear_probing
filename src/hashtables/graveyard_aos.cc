@@ -351,15 +351,17 @@ rebuild()
 			x = interval;
 			if (full(p)) queue.push_back(table[p]);
 			settomb(p);
+			++tombs;
 			max_rebuild_queue = std::max(max_rebuild_queue,
 			                             (int)queue.size());
 		} else if (queue.empty() && tomb(p)) {
+			if (q <= p) q = p + 1;
 			while(q < buckets && !full(q)) ++q;
 			if (q < buckets && hash(key(q)) <= p) {
 				table[p] = table[q];
 				setfull(p);
 				settomb(q);
-				++tombs;
+				++tombs; 
 			} else
 				setempty(p);
 		} else if (!queue.empty()) {
@@ -368,7 +370,6 @@ rebuild()
 			setfull(p);
 			queue.pop_front();
 		}
-		if (q <= p) q = p + 1;
 	}
 
 	records -= queue.size(); // avoid double count on reinsert

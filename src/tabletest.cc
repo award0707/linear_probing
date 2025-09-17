@@ -9,11 +9,11 @@
 #include "linear.h"
 
 #define SIZE 400
-//#define INFINITE	/* test in an infinite loop, breaking only on error */
+#define INFINITE	/* test in an infinite loop, breaking only on error */
 #define NUMTESTS 100
 #define READD_BEFORE	/* do a readd test before rebuilding */
 
-using hashtable = linear_aos<uint32_t,uint32_t>;
+using hashtable = graveyard_aos<uint32_t,uint32_t>;
 using result = hashtable::result;
 
 bool check(hashtable &h)

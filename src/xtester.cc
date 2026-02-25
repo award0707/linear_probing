@@ -12,7 +12,7 @@
 #include "linear.h"
 
 pcg_extras::seed_seq_from<std::random_device> seed_source;
-pcg64 rng(42u);
+pcg64 rng(seed_source);
 
 // range of load factors to test
 #define START 2

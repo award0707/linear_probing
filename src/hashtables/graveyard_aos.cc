@@ -92,24 +92,33 @@ probe(K k, uint32_t *slot, optype operation, bool* wrapped)
 	uint64_t miss = 0;
 	bool res = false;
 	uint32_t s = std::max(h, table_head);
+	uint32_t t;
 
 	switch(operation) {
 	case INSERT:
 	case REBUILD_INS:
 		res = true;
 		while(1) {
-			if (full(s) && key(s) == k) {	// duplicate key
-				res = false;
-				break;
-			}
-			if (empty(s) || (full(s) && hash(key(s)) >= h)) break;
+			if (full(s) && key(s) == k) { res = false; break; }
+			if (empty(s) || (full(s) && hash(key(s)) > h)) break;
 			if (++s == buckets) {
 				s = 0;
 				*wrapped = true;
 			}
 			++miss;
-			if (s == table_head) break;
+			if (s == table_head) break; 
 		}
+		/* t = s; */
+		/* while(1) { // scan all keys with this hash for dupes */
+		/* 	if (t == table_head) break; */
+		/* 	if (full(t) && key(t) == k) { */
+		/* 		res = false; */
+		/* 		break; */
+		/* 	} */
+		/* 	if (++t == buckets) t = 0; */
+		/* 	if (empty(t) || hash(key(t)) != h) */
+		/* 		break; */
+		/* } */
 		break;
 	case QUERY:
 	case REMOVE:

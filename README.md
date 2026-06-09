@@ -12,3 +12,6 @@ value types (default int key, int value).
 
 The `testers` directory contains some header only test benches.
 Instantiate using one of the table types found in `hashtables`.
+
+Fix-b
+Configurable B, with expansion if N/B tombs can't be maintained on rebuild.

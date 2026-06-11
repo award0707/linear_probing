@@ -97,7 +97,7 @@ class querytester {
 	void querying(hashtable *ht, const std::vector<uint32_t> &keys,
 	              int nq, int f_pct)
 	{
-		int v;
+		uint32_t v;
 		uint64_t fails = 0;
 		int j = keys.size()-1;
 

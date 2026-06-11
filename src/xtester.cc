@@ -14,23 +14,20 @@
 pcg_extras::seed_seq_from<std::random_device> seed_source;
 pcg64 rng(seed_source);
 
-// range of load factors to test
-#define START 2
-#define END 400
-
 int main(int argc, char **argv)
 {
 	const vector<uint64_t> bs
-		{ 1'000'000,
+		{ 10'000, 40'000, 100'000, 200'000
 		};
 	vector<int> xs;
-	vector<int> mxs { 5, 10, 20, 50, 100, 150, 250, 400 };
+	//vector<int> mxs { 5, 10, 20, 50, 100, 150, 250, 400 };
 
-	for(int i=START; i<=END; i++)
+	// test a range of load factors
+	for(int i=2; i<=40; i++)
 		xs.push_back(i);
 
 	const int nq = 1'000'000;       // queries per test
-	const int nt = 10;              // number of tests to average over
+	const int nt = 20;              // number of tests to average over
 
 	for (auto b: bs) {
 		std::ofstream f(std::to_string(b/1000) + "_aos_query_xtester");

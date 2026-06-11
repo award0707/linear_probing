@@ -508,6 +508,7 @@ cluster_len(std::map<int,int> *clust) const
 
 // fill in a histogram of search distances
 // i.e. the distance from a key's slot and the hash of that key
+// map of tuples: (search distance k, keys with a search distance of k)
 template<typename K, typename V>
 void graveyard_aos<K,V>::
 search_distance(std::map<int,int> *disp) const

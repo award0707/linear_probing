@@ -9,7 +9,7 @@
 
 class graveyard {
 	private:
-		enum slot_state { FULL, EMPTY, TOMB };
+		enum slot_state : char { FULL, EMPTY, TOMB };
 		enum optype { INSERT, QUERY, REMOVE, REBUILD_INS };
 
 		struct record {

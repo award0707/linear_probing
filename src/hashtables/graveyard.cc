@@ -128,7 +128,7 @@ insert_probe(uint32_t k, uint32_t *slot, bool* wrapped)
 		++miss;
 		if (s == table_head) break; 
 	}
-	/* // rescan this hash for dupes since ordering is not strict */
+	/* // rescan this hash for dupes if ordering is not strict */
 	/* t = s; */
 	/* while(1) { */
 	/* 	if (t == table_head) break; */

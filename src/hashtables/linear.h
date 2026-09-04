@@ -36,7 +36,7 @@ class linear {
 		void update_misses(uint64_t misses, enum optype op);
 
 		inline slot_state state(uint32_t k) const {
-			return table[k].state;
+			return states[k];
 		}
 		inline uint32_t& key(uint32_t k) const {
 			return table[k].key;
@@ -50,9 +50,9 @@ class linear {
 		inline void setvalue(uint32_t k, uint32_t v)
 			{ table[k].value = v; }
 
-		inline void setfull(uint32_t k) { table[k].state = FULL; }
-		inline void setempty(uint32_t k) { table[k].state = EMPTY; }
-		inline void settomb(uint32_t k) { table[k].state = TOMB; }
+		inline void setfull(uint32_t k) { states[k] = FULL; }
+		inline void setempty(uint32_t k) { states[k] = EMPTY; }
+		inline void settomb(uint32_t k) { states[k] = TOMB; }
 
 		inline bool full(uint32_t k) const {
 			return state(k) == FULL;

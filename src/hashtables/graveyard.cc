@@ -24,7 +24,7 @@ graveyard(uint32_t n, uint32_t b)
 	slots = n;
 	blocksize = b;
 	blockcount = n / b + (n % b != 0);
-	fullcount = 0;
+	keycount = 0;
 	tombcount = 0;
 	table_head = 0;
 	keycount = 0;
@@ -60,7 +60,7 @@ resize(uint32_t n)
 	record *oldtable = table;
 	slot_state *oldstates = states;
 
-	cerr << "resize(): rehashing into " << b << " slots\n";
+	cerr << "resize(): rehashing into " << n << " slots\n";
 	
 	table = new record[n];
 	if (!table) cerr << "resize: couldn't allocate table\n"; 
@@ -82,7 +82,7 @@ resize(uint32_t n)
 }
 
 bool graveyard::
-probe(uint32_t k, uint32_t *slot)
+probe(uint32_t k, uint32_t *slot, optype op)
 {
 	const uint32_t h = hash(k);
 	uint64_t miss = 0;
@@ -101,13 +101,13 @@ probe(uint32_t k, uint32_t *slot)
 		if (s == table_head) break;
 	}
 
-	if (miss) update_misses(miss, operation);
+	if (miss) update_misses(miss, op);
 	*slot = s;
 	return res;
 }
 
 bool graveyard::
-insert_probe(uint32_t k, uint32_t *slot, bool* wrapped)
+insert_probe(uint32_t k, uint32_t *slot, bool* wrapped, optype op)
 {
 	const uint32_t h = hash(k);
 	uint64_t miss = 0;
@@ -140,7 +140,7 @@ insert_probe(uint32_t k, uint32_t *slot, bool* wrapped)
 	/* 	if (empty(t) || hash(key(t)) != h) */
 	/* 		break; */
 	/* } */
-	if (miss) update_misses(miss, operation);
+	if (miss) update_misses(miss, op);
 	*slot = s;
 	return res;
 }
@@ -287,7 +287,7 @@ rb_insert(uint32_t k, uint32_t v)
 		return result::FULLTABLE;
 	}
 
-	if (!insert_probe(k, &slot, &wrapped)) {
+	if (!insert_probe(k, &slot, &wrapped, optype::REBUILD_INS)) {
 		++failed_inserts;
 		++duplicates;
 		return result::DUPLICATE;
@@ -333,7 +333,7 @@ remove(uint32_t k)
 	uint32_t slot;
 	++removes;	
 
-	if (probe(k, &slot)) {
+	if (probe(k, &slot, optype::REMOVE)) {
 		settomb(slot);
 		++tombcount;
 		--keycount;

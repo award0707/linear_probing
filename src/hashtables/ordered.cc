@@ -47,27 +47,29 @@ hash(uint32_t k) const
 }
 
 void ordered::
-resize(uint32_t b)
+resize(uint32_t n)
 {
 	uint32_t oldbuckets = buckets;
 	record *oldtable = table;
+	enum slot_state oldstates = states;
 
-	std::cerr << "resize(): rehashing into " << b << " buckets\n";
+	std::cerr << "resize(): rehashing into " << n << " buckets\n";
 
-	table = new record[b];
-	if (!table) std::cerr << "couldn't allocate for resize\n";
-	for(uint32_t i=0; i<b; ++i)
-		table[i].state = EMPTY;
+	table = new record[n];
+	states = new enum slot_state[n];
+	if (!table || !states) std::cerr << "couldn't allocate for resize\n";
+	for(uint32_t i=0; i<n; ++i) states[i] = EMPTY;
 	records = 0;
 	tombs = 0;
-	buckets = b;
+	buckets = n;
 
 	for(uint32_t i=0; i<oldbuckets; ++i) {
-		if (oldtable[i].state == FULL)
+		if (oldstates[i] == FULL)
 			insert(oldtable[i].key, oldtable[i].value, true);
 	}
 
 	delete[] oldtable;
+	delete[] oldstates;
 	resizes++;
 }
 

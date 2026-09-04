@@ -13,7 +13,7 @@
 #define NUMTESTS 100
 #define READD_BEFORE	/* do a readd test before rebuilding */
 
-using hashtable = graveyard_aos<uint32_t,uint32_t>;
+using hashtable = graveyard;
 using result = hashtable::result;
 
 bool check(hashtable &h)
@@ -54,7 +54,7 @@ main()
 	int nt = NUMTESTS;
 	while (nt--) {
 #endif
-		hashtable t(SIZE);
+		hashtable t(SIZE,8);
 		std::vector<uint32_t> keys(SIZE,0);
 
 		t.disable_rebuilds = true;

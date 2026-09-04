@@ -8,6 +8,8 @@
 #include <map>
 
 class graveyard {
+	public:
+		enum result { SUCCESS, FAILURE, REBUILD, DUPLICATE, FULLTABLE };
 	private:
 		enum slot_state : char { FULL, EMPTY, TOMB };
 		enum optype { INSERT, QUERY, REMOVE, REBUILD_INS };
@@ -27,8 +29,9 @@ class graveyard {
 		double max_load_factor;
 
 		uint32_t hash(uint32_t k) const;
-		bool probe(uint32_t k, uint32_t *slot);
-		bool insert_probe(uint32_t k, uint32_t *slot, bool* wrapped);
+		bool probe(uint32_t k, uint32_t *slot, enum optype op=QUERY);
+		bool insert_probe(uint32_t k, uint32_t *slot, bool* wrapped,
+		     enum optype op=INSERT);
 		uint32_t shift(uint32_t slot);
 		inline void slotmove(uint32_t destidx, uint32_t srcidx,
 		     size_t count);
@@ -57,7 +60,6 @@ class graveyard {
 		inline bool tomb(uint32_t k) const { return state(k) == TOMB; }
 
 	public:
-		enum result { SUCCESS, FAILURE, REBUILD, DUPLICATE, FULLTABLE };
 
 		graveyard(uint32_t n, uint32_t b);
 		~graveyard();

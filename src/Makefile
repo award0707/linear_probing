@@ -3,8 +3,7 @@ CC=g++ -std=c++2a
 CFLAGS=-O2 -Wall
 INC = -I. -Itesters -Ihashtables -Itools
 
-tabletypes = graveyard_aos ordered_aos linear_aos graveyard_soa \
-	     ordered_soa linear_soa
+tabletypes = graveyard ordered linear 
 testers = amorttester querytester rebuildtester loadtester floattester \
 	  one_rb_querytester
 benches = tabletest querystats queuestats xtester rebuildstats \
